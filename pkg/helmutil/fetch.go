@@ -123,6 +123,8 @@ func Install(cfg *action.Configuration, releaseName, path, namespace string, val
 	installAction := action.NewInstall(cfg)
 	installAction.ReleaseName = releaseName
 	installAction.Namespace = namespace
+	installAction.CreateNamespace = true
+	installAction.IncludeCRDs = true
 	if devel {
 		installAction.Devel = true
 		installAction.Version = ">0.0.0.0"
