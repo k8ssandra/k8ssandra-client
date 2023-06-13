@@ -58,7 +58,9 @@ func GetExecOptions(streams genericclioptions.IOStreams, configFlags *genericcli
 	}
 
 	// Hack from kubectl's exec. Probably a bug in the Kubernetes' client implementation
-	SetKubernetesDefaults(execOptions.Config)
+	if err := SetKubernetesDefaults(execOptions.Config); err != nil {
+		return nil, err
+	}
 
 	clientset, err := kubernetes.NewForConfig(execOptions.Config)
 	if err != nil {
