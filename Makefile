@@ -43,17 +43,42 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: fmt vet
+test: fmt vet lint ## Run tests
 	go test -v ./...
+
+.PHONY: lint
+lint: golangci-lint ## Run golangci-lint against code
+	$(GOLANGCI_LINT) run ./...
 
 .PHONY: build
 build: test ## Build kubectl-k8ssandra
 	CGO_ENABLED=0 go build -o kubectl-k8ssandra cmd/kubectl-k8ssandra/main.go
 
 .PHONY: docker-build
-docker-build: ## Build k8ssandra-client
+docker-build: ## Build k8ssandra-client docker image
 	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG_LATEST} . --load -f cmd/kubectl-k8ssandra/Dockerfile
 
 .PHONY: kind-load
 kind-load: ## Load k8ssandra-client:latest to kind
 	kind load docker-image ${IMG_LATEST}
+
+##@ Tools / Dependencies
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+## Tool binaries
+
+GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
+
+GOLINT_VERSION ?= 1.53.2
+
+.PHONY: golangci-lint
+golangci-lint:
+	@if test -x $(LOCALBIN)/golangci-lint && ! $(LOCALBIN)/golangci-lint version | grep -q $(GOLINT_VERSION); then \
+		echo "$(LOCALBIN)/golangci-lint version is not expected $(GOLINT_VERSION). Removing it before installing."; \
+		rm -rf $(LOCALBIN)/golangci-lint; \
+	fi
+	test -s $(LOCALBIN)/golangci-lint || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v$(GOLINT_VERSION)

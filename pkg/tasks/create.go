@@ -32,10 +32,12 @@ func CreateTask(ctx context.Context, kubeClient client.Client, command controlap
 				Name:      dc.Name,
 				Namespace: dc.Namespace,
 			},
-			Jobs: []controlapi.CassandraJob{
-				{
-					Name:    fmt.Sprintf("%s-%s", dc.Name, string(command)),
-					Command: command,
+			CassandraTaskTemplate: controlapi.CassandraTaskTemplate{
+				Jobs: []controlapi.CassandraJob{
+					{
+						Name:    fmt.Sprintf("%s-%s", dc.Name, string(command)),
+						Command: command,
+					},
 				},
 			},
 		},
