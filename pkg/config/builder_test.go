@@ -83,7 +83,7 @@ func TestParseNodeInfo(t *testing.T) {
 
 func TestCassandraYamlWriting(t *testing.T) {
 	require := require.New(t)
-	cassYamlDir := filepath.Join(envtest.RootDir(), "testfiles", "4.1")
+	cassYamlDir := filepath.Join(envtest.RootDir(), "testfiles")
 	tempDir, err := os.MkdirTemp("", "client-test")
 
 	fmt.Printf("tempDir: %s\n", tempDir)
@@ -103,4 +103,28 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
 
 	// TODO Read back and verify all our changes are there
+}
+
+func TestRackProperties(t *testing.T) {
+	require := require.New(t)
+	propertiesDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+
+	fmt.Printf("tempDir: %s\n", tempDir)
+	require.NoError(err)
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", existingConfig)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+	t.Setenv("POD_IP", "172.27.0.1")
+	t.Setenv("RACK_NAME", "r1")
+	nodeInfo, err := parseNodeInfo()
+	require.NoError(err)
+	require.NotNil(nodeInfo)
+
+	require.NoError(createRackProperties(configInput, nodeInfo, propertiesDir, tempDir))
+
+	// TODO Verify file data..
 }

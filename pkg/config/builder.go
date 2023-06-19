@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"text/template"
 
 	"github.com/adutra/goalesce"
 	"gopkg.in/yaml.v3"
@@ -52,7 +53,7 @@ func Build(ctx context.Context) error {
 	}
 
 	// Create rack information
-	if err := createRackProperties(configInput, nodeInfo, outputConfigFileDir()); err != nil {
+	if err := createRackProperties(configInput, nodeInfo, defaultConfigFileDir(), outputConfigFileDir()); err != nil {
 		return err
 	}
 
@@ -127,14 +128,58 @@ func outputConfigFileDir() string {
 	return "/configs"
 }
 
-func createRackProperties(configInput *ConfigInput, nodeInfo *NodeInfo, targetDir string) error {
+func createRackProperties(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string) error {
 	// Write cassandra-rackdc.properties file with Datacenter and Rack information
 
-	// Load the current file
+	// This implementation would preserve any extra keys.. but then again, our seedProvider doesn't support those
+	/*
+		rackFile := filepath.Join(sourceDir, "cassandra-rackdc.properties")
+		props, err := properties.LoadFile(rackFile, properties.UTF8)
+		if err != nil {
+			return err
+		}
 
-	// Set dc to DatacenterInfo.Name
-	// Set rack to NodeInfo.Rack
-	return nil
+		props.Set("dc", configInput.DatacenterInfo.Name)
+		props.Set("rack", nodeInfo.Rack)
+
+		targetFile := filepath.Join(targetDir, "cassandra-rackdc.properties")
+		f, err := os.OpenFile(targetFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0770)
+		if err != nil {
+			return err
+		}
+
+		defer f.Close()
+
+		if _, err = props.WriteComment(f, "#", properties.UTF8); err != nil {
+			return err
+		}
+	*/
+
+	// This creates the cassandra-rackdc.properites with a template with only the values we currently support
+	targetFileT := filepath.Join(targetDir, "cassandra-rackdc.properties")
+	fT, err := os.OpenFile(targetFileT, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0770)
+	if err != nil {
+		return err
+	}
+
+	defer fT.Close()
+
+	rackTemplate, err := template.New("cassandra-rackdc.properties").Parse("dc={{ .DatacenterName }}\nrack={{ .RackName }}\n")
+	if err != nil {
+		return err
+	}
+
+	type RackTemplate struct {
+		DatacenterName string
+		RackName       string
+	}
+
+	rt := RackTemplate{
+		DatacenterName: configInput.DatacenterInfo.Name,
+		RackName:       nodeInfo.Rack,
+	}
+
+	return rackTemplate.Execute(fT, rt)
 }
 
 func createCassandraEnv(configInput *ConfigInput, targetDir string) error {
@@ -208,5 +253,5 @@ func writeYaml(doc map[string]interface{}, targetFile string) error {
 		return err
 	}
 
-	return os.WriteFile(targetFile, b, 0) // TODO Fix Perm
+	return os.WriteFile(targetFile, b, 0660)
 }
