@@ -120,12 +120,13 @@ func parseNodeInfo() (*NodeInfo, error) {
 // findConfigFiles returns the path of config files in the cass-management-api (for Cassandra 4.1.x and up)
 func defaultConfigFileDir() string {
 	// $CASSANDRA_CONF could modify this, but we override it in the mgmt-api
-	return "/opt/cassandra/conf"
+	return "/cassandra-base-config"
+	// return "/opt/cassandra/conf"
 }
 
 func outputConfigFileDir() string {
 	// docker-entrypoint.sh will copy the files from here, so we need all the outputs to target this
-	return "/configs"
+	return "/config"
 }
 
 func createRackProperties(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string) error {

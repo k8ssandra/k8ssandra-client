@@ -56,11 +56,12 @@ build: test ## Build kubectl-k8ssandra
 
 .PHONY: docker-build
 docker-build: ## Build k8ssandra-client docker image
-	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG_LATEST} . --load -f cmd/kubectl-k8ssandra/Dockerfile
+	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG_LATEST} -t ${IMG} . --load -f cmd/kubectl-k8ssandra/Dockerfile
 
 .PHONY: kind-load
 kind-load: ## Load k8ssandra-client:latest to kind
 	kind load docker-image ${IMG_LATEST}
+	kind load docker-image ${IMG}
 
 ##@ Tools / Dependencies
 
