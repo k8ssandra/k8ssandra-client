@@ -1,15 +1,19 @@
 package config
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/adutra/goalesce"
+	"github.com/k8ssandra/k8ssandra-client/pkg/config/metadata"
 	"gopkg.in/yaml.v3"
 )
 
@@ -63,7 +67,7 @@ func Build(ctx context.Context) error {
 	}
 
 	// Create jvm*-server.options
-	if err := createJVMOptions(configInput, outputConfigFileDir()); err != nil {
+	if err := createJVMOptions(configInput, defaultConfigFileDir(), outputConfigFileDir()); err != nil {
 		return err
 	}
 
@@ -189,8 +193,96 @@ func createCassandraEnv(configInput *ConfigInput, targetDir string) error {
 	return nil
 }
 
-func createJVMOptions(configInput *ConfigInput, targetDir string) error {
+func createJVMOptions(configInput *ConfigInput, sourceDir, targetDir string) error {
+	// Read the current jvm-server-options as []string, do linear search to replace the values with the inputs we get
+	optionsPath := filepath.Join(sourceDir, "jvm-server.options")
+	currentOptions, err := readJvmServerOptions(optionsPath)
+	if err != nil {
+		return err
+	}
+
+	targetOptions := make([]string, 0, len(currentOptions)+len(configInput.ServerOptions))
+
+	if len(configInput.ServerOptions) > 0 {
+		// Parse the jvm-server-options
+
+		if addOpts, found := configInput.ServerOptions["additional-jvm-opts"]; found {
+			// These should be appended..
+			for _, v := range addOpts.([]interface{}) {
+				targetOptions = append(targetOptions, v.(string))
+			}
+		}
+
+		s := metadata.ServerOptions()
+		for k, v := range configInput.ServerOptions {
+			if k == "additional-jvm-opts" {
+				continue
+			}
+
+			if outputVal, found := s[k]; found {
+				if match, _ := metadata.PrefixParser(outputVal); match {
+					targetOptions = append(targetOptions, fmt.Sprintf("%s%s", outputVal, v))
+				} else {
+					targetOptions = append(targetOptions, fmt.Sprintf("%s=%s", outputVal, v))
+				}
+			}
+		}
+
+	}
+
+	// Add current options, if they're not there..
+curOptions:
+	for _, v := range currentOptions {
+		for _, vT := range targetOptions {
+			// TODO This is not handling Xss etc right.. fix
+			if v == vT {
+				continue curOptions
+			}
+		}
+		targetOptions = append(targetOptions, v)
+	}
+
+	targetFileT := filepath.Join(targetDir, "jvm-server.options")
+	fT, err := os.OpenFile(targetFileT, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0770)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range targetOptions {
+		_, err := fmt.Fprintf(fT, "%s\n", v)
+		if err != nil {
+			return err
+		}
+	}
+
+	defer fT.Close()
+
 	return nil
+}
+
+func readJvmServerOptions(path string) ([]string, error) {
+	options := make([]string, 0)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text()) // Avoid dual allocation from token -> string
+
+		if !strings.HasPrefix(line, "#") && len(line) > 0 {
+			options = append(options, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return options, nil
 }
 
 // cassandra.yaml related functions

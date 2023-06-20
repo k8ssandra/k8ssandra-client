@@ -30,8 +30,9 @@ type ConfigInput struct {
 	ClusterInfo    ClusterInfo            `json:"cluster-info"`
 	DatacenterInfo DatacenterInfo         `json:"datacenter-info"`
 	CassYaml       map[string]interface{} `json:"cassandra-yaml,omitempty"`
+	ServerOptions  map[string]interface{} `json:"jvm-server-options,omitempty"`
 
-	// jvm-options parts..
+	// At some point, parse the remaining unknown keys when we decide what to do with them..
 }
 
 type ClusterInfo struct {

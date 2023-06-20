@@ -12,7 +12,9 @@ import (
 
 var existingConfig = `
 {
-	"cassandra-env-sh": {
+	"jvm-server-options": {
+	  "initial_heap_size": "512m",
+	  "max_heap_size": "512m",
 	  "additional-jvm-opts": [
 		"-Dcassandra.system_distributed_replication=test-dc:1",
 		"-Dcom.sun.management.jmxremote.authenticate=true"
@@ -127,4 +129,33 @@ func TestRackProperties(t *testing.T) {
 	require.NoError(createRackProperties(configInput, nodeInfo, propertiesDir, tempDir))
 
 	// TODO Verify file data..
+}
+
+func TestServerOptionsReading(t *testing.T) {
+	require := require.New(t)
+	propertiesDir := filepath.Join(envtest.RootDir(), "testfiles")
+	inputFile := filepath.Join(propertiesDir, "jvm-server.options")
+	s, err := readJvmServerOptions(inputFile)
+	require.NoError(err)
+
+	for _, v := range s {
+		fmt.Printf("%s\n", v)
+	}
+}
+
+func TestServerOptionsOutput(t *testing.T) {
+	require := require.New(t)
+	optionsDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+
+	fmt.Printf("tempDir: %s\n", tempDir)
+	require.NoError(err)
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", existingConfig)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+
+	require.NoError(createJVMOptions(configInput, optionsDir, tempDir))
 }

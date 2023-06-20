@@ -52,12 +52,16 @@ func NewBuilderCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	}
 
 	fl := cmd.Flags()
+	// TODO Add flags to control the input and the output (some of the inputs are from env variables)
 	o.configFlags.AddFlags(fl)
 	return cmd
 }
 
 // Complete parses the arguments and necessary flags to options
 func (c *builderOptions) Complete(cmd *cobra.Command, args []string) error {
+	// TODO Instead of pkg doing the Getenv parameters, we should probably do them here
+	//	    since it's related to the command line interface and shell. Makes it easier to
+	// 		refactor later to more sane input
 	return nil
 }
 
