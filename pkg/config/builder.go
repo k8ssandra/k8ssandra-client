@@ -234,20 +234,35 @@ func createCassandraEnv(configInput *ConfigInput, sourceDir, targetDir string) e
 	return nil
 }
 
+// createJVMOptions writes all the jvm*-server.options
 func createJVMOptions(configInput *ConfigInput, sourceDir, targetDir string) error {
+	if err := createServerJVMOptions(configInput.ServerOptions11, "jvm-server.options", sourceDir, targetDir); err != nil {
+		return err
+	}
+	if err := createServerJVMOptions(configInput.ServerOptions11, "jvm11-server.options", sourceDir, targetDir); err != nil {
+		return err
+	}
+	if err := createServerJVMOptions(configInput.ServerOptions11, "jvm17-server.options", sourceDir, targetDir); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createServerJVMOptions(options map[string]interface{}, filename, sourceDir, targetDir string) error {
 	// Read the current jvm-server-options as []string, do linear search to replace the values with the inputs we get
-	optionsPath := filepath.Join(sourceDir, "jvm-server.options")
+	optionsPath := filepath.Join(sourceDir, filename)
 	currentOptions, err := readJvmServerOptions(optionsPath)
 	if err != nil {
 		return err
 	}
 
-	targetOptions := make([]string, 0, len(currentOptions)+len(configInput.ServerOptions))
+	targetOptions := make([]string, 0, len(currentOptions)+len(options))
 
-	if len(configInput.ServerOptions) > 0 {
+	if len(options) > 0 {
 		// Parse the jvm-server-options
 
-		if addOpts, found := configInput.ServerOptions["additional-jvm-opts"]; found {
+		if addOpts, found := options["additional-jvm-opts"]; found {
 			// These should be appended..
 			for _, v := range addOpts.([]interface{}) {
 				targetOptions = append(targetOptions, v.(string))
@@ -255,7 +270,7 @@ func createJVMOptions(configInput *ConfigInput, sourceDir, targetDir string) err
 		}
 
 		s := metadata.ServerOptions()
-		for k, v := range configInput.ServerOptions {
+		for k, v := range options {
 			if k == "additional-jvm-opts" {
 				continue
 			}
@@ -283,7 +298,7 @@ curOptions:
 		targetOptions = append(targetOptions, v)
 	}
 
-	targetFileT := filepath.Join(targetDir, "jvm-server.options")
+	targetFileT := filepath.Join(targetDir, filename)
 	fT, err := os.OpenFile(targetFileT, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0770)
 	if err != nil {
 		return err
@@ -303,6 +318,14 @@ curOptions:
 
 func readJvmServerOptions(path string) ([]string, error) {
 	options := make([]string, 0)
+
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return make([]string, 0), nil
+		}
+		return nil, err
+	}
+
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err

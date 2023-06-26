@@ -1,7 +1,7 @@
 // Code is generated with scripts/parse.py. DO NOT EDIT. Sadly, the script is lost in time..
 package metadata
 
-import(
+import (
 	"regexp"
 )
 
@@ -55,6 +55,16 @@ var jvm_server_options = map[string]Metadata{
 	"-XX:+ExitOnOutOfMemoryError":                          {Key: "exit_on_out_of_memory_error", BuilderType: "boolean", DefaultValueString: "false"},
 }
 
+var jvm11_server_options = map[string]Metadata{
+	"-Djdk.attach.allowAttachSelf":          {Key: "jdk_attach_allow_attach_self", BuilderType: "boolean", DefaultValueString: "true"},
+	"-Dio.netty.tryReflectionSetAccessible": {Key: "io_netty_try_reflection_set_accessible", BuilderType: "boolean", DefaultValueString: "true"},
+	"-XX:G1RSetUpdatingPauseTimePercent":    {Key: "g1r_set_updating_pause_time_percent", BuilderType: "int", DefaultValueString: "5"},
+	"-XX:MaxGCPauseMillis":                  {Key: "max_gc_pause_millis", BuilderType: "int", DefaultValueString: "500"},
+	"-XX:InitiatingHeapOccupancyPercent":    {Key: "initiating_heap_occupancy_percent", BuilderType: "int"},
+	"-XX:ParallelGCThreads":                 {Key: "parallel_gc_threads", BuilderType: "int"},
+	"-XX:ConcGCThreads":                     {Key: "conc_gc_threads", BuilderType: "int"},
+}
+
 const (
 	jvm_server_optionsPrefixExp = "^-Xss|^-Xms|^-Xmx"
 )
@@ -69,6 +79,11 @@ func ServerOptions() map[string]string {
 	for k, v := range jvm_server_options {
 		m[v.Key] = k
 	}
+
+	for k, v := range jvm11_server_options {
+		m[v.Key] = k
+	}
+
 	return m
 }
 
