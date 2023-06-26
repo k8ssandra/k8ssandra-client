@@ -31,8 +31,15 @@ type ConfigInput struct {
 	DatacenterInfo DatacenterInfo         `json:"datacenter-info"`
 	CassYaml       map[string]interface{} `json:"cassandra-yaml,omitempty"`
 	ServerOptions  map[string]interface{} `json:"jvm-server-options,omitempty"`
+	CassandraEnv   CassandraEnvOptions    `json:"cassandra-env-sh,omitempty"`
 
 	// At some point, parse the remaining unknown keys when we decide what to do with them..
+}
+
+type CassandraEnvOptions struct {
+	MallocArenaMax int      `json:"malloc-arena-max,omitempty"`
+	HeapDumpDir    string   `json:"heap-dump-dir,omitempty"`
+	AdditionalOpts []string `json:"additional-jvm-opts,omitempty"`
 }
 
 type ClusterInfo struct {

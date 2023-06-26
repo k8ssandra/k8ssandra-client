@@ -12,6 +12,13 @@ import (
 
 var existingConfig = `
 {
+	"cassandra-env-sh": {
+	  "malloc-arena-max": 8,
+	  "additional-jvm-opts": [
+		"-Dcassandra.system_distributed_replication=test-dc:1",
+		"-Dcom.sun.management.jmxremote.authenticate=true"
+	  ]
+	},
 	"jvm-server-options": {
 	  "initial_heap_size": "512m",
 	  "max_heap_size": "512m",
@@ -158,4 +165,21 @@ func TestServerOptionsOutput(t *testing.T) {
 	require.NotNil(configInput)
 
 	require.NoError(createJVMOptions(configInput, optionsDir, tempDir))
+}
+
+func TestCassandraEnv(t *testing.T) {
+	require := require.New(t)
+	envDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+
+	fmt.Printf("tempDir: %s\n", tempDir)
+	require.NoError(err)
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", existingConfig)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+
+	require.NoError(createCassandraEnv(configInput, envDir, tempDir))
 }

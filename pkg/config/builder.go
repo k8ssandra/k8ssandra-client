@@ -62,7 +62,7 @@ func Build(ctx context.Context) error {
 	}
 
 	// Create cassandra-env.sh
-	if err := createCassandraEnv(configInput, outputConfigFileDir()); err != nil {
+	if err := createCassandraEnv(configInput, defaultConfigFileDir(), outputConfigFileDir()); err != nil {
 		return err
 	}
 
@@ -75,6 +75,9 @@ func Build(ctx context.Context) error {
 	if err := createCassandraYaml(configInput, nodeInfo, defaultConfigFileDir(), outputConfigFileDir()); err != nil {
 		return err
 	}
+
+	// TODO Do we need to do something with rest of the conf-files?
+	// At least we want jvm11-server.options also. What about logbacks?
 
 	return nil
 }
@@ -187,9 +190,47 @@ func createRackProperties(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDi
 	return rackTemplate.Execute(fT, rt)
 }
 
-func createCassandraEnv(configInput *ConfigInput, targetDir string) error {
-	// Modify cassandra-env.sh if it's in the jvm-options / jvm-server-options / additional-jvm-options?
-	// This probably needs a template that is used to ensure backwards compatibility
+func createCassandraEnv(configInput *ConfigInput, sourceDir, targetDir string) error {
+	envPath := filepath.Join(sourceDir, "cassandra-env.sh")
+	f, err := os.ReadFile(envPath)
+	if err != nil {
+		return err
+	}
+
+	targetFileT := filepath.Join(targetDir, "cassandra-env.sh")
+	fT, err := os.OpenFile(targetFileT, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0770)
+	if err != nil {
+		return err
+	}
+
+	defer fT.Close()
+
+	if configInput.CassandraEnv.MallocArenaMax > 0 {
+		if _, err := fmt.Fprintf(fT, "export MALLOC_ARENA_MAX=%d\n", configInput.CassandraEnv.MallocArenaMax); err != nil {
+			return err
+		}
+	}
+
+	if configInput.CassandraEnv.HeapDumpDir != "" {
+		if _, err := fmt.Fprintf(fT, "export CASSANDRA_HEAPDUMP_DIR=%s\n", configInput.CassandraEnv.HeapDumpDir); err != nil {
+			return err
+		}
+	}
+
+	if _, err = fT.Write(f); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprintf(fT, "\n"); err != nil {
+		return err
+	}
+
+	for _, opt := range configInput.CassandraEnv.AdditionalOpts {
+		if _, err := fmt.Fprintf(fT, "JVM_OPTS=\"$JVM_OPTS %s\"\n", opt); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
