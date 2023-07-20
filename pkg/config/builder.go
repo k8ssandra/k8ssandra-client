@@ -8,12 +8,14 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/adutra/goalesce"
-	"github.com/k8ssandra/k8ssandra-client/pkg/config/metadata"
+	metadata "github.com/burmanm/definitions-parser/pkg/types"
+	gentypes "github.com/burmanm/definitions-parser/pkg/types/generated"
 	"gopkg.in/yaml.v3"
 )
 
@@ -43,6 +45,10 @@ import (
 
 	// TODO Could we also refactor the POD_IP / HOST_IP processing? Why can't the decision happen in cass-operator?
 */
+
+var (
+	prefixRegexp = regexp.MustCompile(gentypes.JvmServerOptionsPrefixExp)
+)
 
 func Build(ctx context.Context) error {
 	// Parse input from cass-operator
@@ -75,9 +81,6 @@ func Build(ctx context.Context) error {
 	if err := createCassandraYaml(configInput, nodeInfo, defaultConfigFileDir(), outputConfigFileDir()); err != nil {
 		return err
 	}
-
-	// TODO Do we need to do something with rest of the conf-files?
-	// At least we want jvm11-server.options also. What about logbacks?
 
 	return nil
 }
@@ -236,17 +239,29 @@ func createCassandraEnv(configInput *ConfigInput, sourceDir, targetDir string) e
 
 // createJVMOptions writes all the jvm*-server.options
 func createJVMOptions(configInput *ConfigInput, sourceDir, targetDir string) error {
-	if err := createServerJVMOptions(configInput.ServerOptions11, "jvm-server.options", sourceDir, targetDir); err != nil {
+	if err := createServerJVMOptions(configInput.ServerOptions, "jvm-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
 	if err := createServerJVMOptions(configInput.ServerOptions11, "jvm11-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
-	if err := createServerJVMOptions(configInput.ServerOptions11, "jvm17-server.options", sourceDir, targetDir); err != nil {
+	if err := createServerJVMOptions(configInput.ServerOptions17, "jvm17-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func optionsFilenameToMap(filename string) map[string]metadata.Metadata {
+	switch filename {
+	case "jvm-server.options":
+		return gentypes.JvmServerOptionsPrefix
+	case "jvm11-server.options":
+		return gentypes.Jvm11ServerOptionsPrefix
+	default:
+		// JVM17 and newer do not have alias tables in the EDNs
+		return make(map[string]metadata.Metadata, 0)
+	}
 }
 
 func createServerJVMOptions(options map[string]interface{}, filename, sourceDir, targetDir string) error {
@@ -261,7 +276,6 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 
 	if len(options) > 0 {
 		// Parse the jvm-server-options
-
 		if addOpts, found := options["additional-jvm-opts"]; found {
 			// These should be appended..
 			for _, v := range addOpts.([]interface{}) {
@@ -269,28 +283,57 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 			}
 		}
 
-		s := metadata.ServerOptions()
+		s := optionsFilenameToMap(filename)
 		for k, v := range options {
-			if k == "additional-jvm-opts" {
+			if k == "additional-jvm-opts" || k == "garbage_collector" {
 				continue
 			}
 
 			if outputVal, found := s[k]; found {
-				if match, _ := metadata.PrefixParser(outputVal); match {
-					targetOptions = append(targetOptions, fmt.Sprintf("%s%s", outputVal, v))
-				} else {
-					targetOptions = append(targetOptions, fmt.Sprintf("%s=%s", outputVal, v))
+				if outputVal.ValueType == metadata.TemplateValue {
+					// We need another process here..
+					continue
 				}
+				targetOptions = append(targetOptions, outputVal.Output(v.(string)))
 			}
 		}
+	}
 
+	if options == nil {
+		options = make(map[string]interface{})
+	}
+
+	if filename == "jvm11-server.options" {
+		if _, found := options["garbage_collector"]; !found {
+			// This is only applicable to JVM11 options..
+			options["garbage_collector"] = "G1GC"
+		}
+
+		if gcOpts, found := options["garbage_collector"]; found {
+			// Get the GC options
+			currentOptions = append(currentOptions, getGCOptions(gcOpts.(string))...)
+		}
 	}
 
 	// Add current options, if they're not there..
 curOptions:
 	for _, v := range currentOptions {
+		curValueLoc := strings.Index(v, "=")
+
 		for _, vT := range targetOptions {
-			// TODO This is not handling Xss etc right.. fix
+			if suppressed, prefix := prefixMatcher(v); suppressed {
+				if strings.HasPrefix(vT, prefix) {
+					continue curOptions
+				}
+			}
+
+			// Different value should not mean we can't compare
+			targetValueLoc := strings.Index(vT, "=")
+			if targetValueLoc > 0 && curValueLoc > 0 {
+				vT = vT[:targetValueLoc]
+				v = v[:curValueLoc]
+			}
+
 			if v == vT {
 				continue curOptions
 			}
@@ -316,6 +359,31 @@ curOptions:
 	return nil
 }
 
+func getGCOptions(gcName string) []string {
+	switch gcName {
+	case "G1GC":
+		return defaultG1Settings
+	case "CMS":
+		return defaultCMSSettings
+	case "Shenandoah":
+		return []string{"-XX:+UseShenandoahGC"}
+	case "ZGC":
+		return []string{"-XX:+UseZGC"}
+	default:
+		// User needs to define all the settings
+		return []string{}
+	}
+}
+
+func prefixMatcher(value string) (bool, string) {
+	// r := regexp.MustCompile(gentypes.JvmServerOptionsPrefixExp)
+	parts := prefixRegexp.FindStringSubmatch(value)
+	if parts != nil {
+		return true, parts[0]
+	}
+	return false, ""
+}
+
 func readJvmServerOptions(path string) ([]string, error) {
 	options := make([]string, 0)
 
@@ -333,11 +401,28 @@ func readJvmServerOptions(path string) ([]string, error) {
 
 	defer f.Close()
 
+	runningSegment := false
+	currentSegment := ""
+
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text()) // Avoid dual allocation from token -> string
 
+		// Try to detect GC settings
+		if strings.HasPrefix(line, "### ") {
+			segmentName, _ := strings.CutPrefix(line, "### ")
+			if !runningSegment {
+				currentSegment = segmentName
+				runningSegment = true
+			} else {
+				currentSegment = segmentName
+			}
+		}
+
 		if !strings.HasPrefix(line, "#") && len(line) > 0 {
+			if runningSegment && (strings.HasPrefix(currentSegment, "G1") || strings.HasPrefix(currentSegment, "CMS")) {
+				continue
+			}
 			options = append(options, line)
 		}
 	}

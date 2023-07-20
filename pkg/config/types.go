@@ -65,3 +65,28 @@ type NodeInfo struct {
 	Rack string
 	IP   net.IP
 }
+
+var (
+	defaultG1Settings = []string{
+		"-XX:+UseG1GC",
+		"-XX:+ParallelRefProcEnabled",
+		"-XX:MaxTenuringThreshold=1",
+		"-XX:G1HeapRegionSize=16m",
+		"-XX:G1RSetUpdatingPauseTimePercent=5",
+		"-XX:MaxGCPauseMillis=300",
+		"-XX:InitiatingHeapOccupancyPercent=70",
+	}
+
+	defaultCMSSettings = []string{
+		"-XX:+UseConcMarkSweepGC",
+		"-XX:+CMSParallelRemarkEnabled",
+		"-XX:SurvivorRatio=8",
+		"-XX:MaxTenuringThreshold=1",
+		"-XX:CMSInitiatingOccupancyFraction=75",
+		"-XX:+UseCMSInitiatingOccupancyOnly",
+		"-XX:CMSWaitDuration=10000",
+		"-XX:+CMSParallelInitialMarkEnabled",
+		"-XX:+CMSEdenChunksRecordAlways",
+		"-XX:+CMSClassUnloadingEnabled",
+	}
+)

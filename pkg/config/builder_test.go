@@ -22,10 +22,17 @@ var existingConfig = `
 	"jvm-server-options": {
 	  "initial_heap_size": "512m",
 	  "max_heap_size": "512m",
+	  "per_thread_stack_size": "384k",
 	  "additional-jvm-opts": [
 		"-Dcassandra.system_distributed_replication=test-dc:1",
 		"-Dcom.sun.management.jmxremote.authenticate=true"
 	  ]
+	},
+	"jvm11-server-options": {
+		"g1r_set_updating_pause_time_percent": "6",
+		"additional-jvm-opts": [
+			"-XX:MaxGCPauseMillis=350"
+		]
 	},
 	"cassandra-yaml": {
 	  "authenticator": "PasswordAuthenticator",
