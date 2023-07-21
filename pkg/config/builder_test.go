@@ -74,7 +74,7 @@ func TestConfigInfoParsing(t *testing.T) {
 	require.NotNil(configInput.DatacenterInfo)
 
 	require.Equal("test", configInput.ClusterInfo.Name)
-	require.Equal("dc1", configInput.DatacenterInfo.Name)
+	require.Equal("datacenter1", configInput.DatacenterInfo.Name)
 }
 
 func TestParseNodeInfo(t *testing.T) {
