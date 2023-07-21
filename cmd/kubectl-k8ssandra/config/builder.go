@@ -19,6 +19,9 @@ var (
 type builderOptions struct {
 	configFlags *genericclioptions.ConfigFlags
 	genericclioptions.IOStreams
+
+	inputDir  string
+	outputDir string
 }
 
 func newBuilderOptions(streams genericclioptions.IOStreams) *builderOptions {
@@ -52,7 +55,8 @@ func NewBuilderCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	}
 
 	fl := cmd.Flags()
-	// TODO Add flags to control the input and the output (some of the inputs are from env variables)
+	fl.StringVar(&o.inputDir, "input", "", "read config files from this directory instead of default")
+	fl.StringVar(&o.outputDir, "output", "", "write config files to this directory instead of default")
 	o.configFlags.AddFlags(fl)
 	return cmd
 }
@@ -74,5 +78,6 @@ func (c *builderOptions) Validate() error {
 func (c *builderOptions) Run() error {
 	ctx := context.Background()
 
-	return config.Build(ctx)
+	builder := config.NewBuilder(c.inputDir, c.outputDir)
+	return builder.Build(ctx)
 }

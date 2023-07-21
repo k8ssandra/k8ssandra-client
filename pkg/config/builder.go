@@ -19,38 +19,41 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-/*
-  - Need to find the original Cassandra / DSE configuration (the path) in our images
-  - Merge given input with what we have there as a default
+const (
+	// $CASSANDRA_CONF could modify this, but we override it in the mgmt-api
+	defaultInputDir = "/cassandra-base-config"
 
-  - Merge certain keys to different files (only cassandra-yaml -> yamls)
-	- Rack information, cluster information etc
-	- Was there some other information we might want here?
-  - Merge JSON & YAML?
-*/
+	// docker-entrypoint.sh will copy the files from here, so we need all the outputs to target this
+	defaultOutputDir = "/config"
+)
 
-/*
-	For NodeInfo struct, these are set by the cass-operator.
-	// TODO We did add some more also, add support for them?
-	// TODO Also, RACK_NAME and others could be moved to a JSON key which cass-operator could create..
-	// TODO Do we need PRODUCT_VERSION for anything anymore?
+type Builder struct {
+	configInputDir  string
+	configOutputDir string
+}
 
-	{:pod-ip                    (System/getenv "POD_IP")
-      :config-file-data          (System/getenv "CONFIG_FILE_DATA")
-      :product-version           (System/getenv "PRODUCT_VERSION")
-      :rack-name                 (System/getenv "RACK_NAME")
-      :product-name              (or (System/getenv "PRODUCT_NAME") "dse")
-      :use-host-ip-for-broadcast (or (System/getenv "USE_HOST_IP_FOR_BROADCAST") "false")
-      :host-ip                   (System/getenv "HOST_IP")
+func NewBuilder(overrideConfigInput, overrideConfigOutput string) *Builder {
+	b := &Builder{
+		configInputDir:  defaultInputDir,
+		configOutputDir: defaultOutputDir,
+	}
 
-	// TODO Could we also refactor the POD_IP / HOST_IP processing? Why can't the decision happen in cass-operator?
-*/
+	if overrideConfigInput != "" {
+		b.configInputDir = overrideConfigInput
+	}
+
+	if overrideConfigOutput != "" {
+		b.configOutputDir = overrideConfigOutput
+	}
+
+	return b
+}
 
 var (
 	prefixRegexp = regexp.MustCompile(gentypes.JvmServerOptionsPrefixExp)
 )
 
-func Build(ctx context.Context) error {
+func (b *Builder) Build(ctx context.Context) error {
 	// Parse input from cass-operator
 	configInput, err := parseConfigInput()
 	if err != nil {
@@ -63,22 +66,22 @@ func Build(ctx context.Context) error {
 	}
 
 	// Create rack information
-	if err := createRackProperties(configInput, nodeInfo, defaultConfigFileDir(), outputConfigFileDir()); err != nil {
+	if err := createRackProperties(configInput, nodeInfo, b.configInputDir, b.configOutputDir); err != nil {
 		return err
 	}
 
 	// Create cassandra-env.sh
-	if err := createCassandraEnv(configInput, defaultConfigFileDir(), outputConfigFileDir()); err != nil {
+	if err := createCassandraEnv(configInput, b.configInputDir, b.configOutputDir); err != nil {
 		return err
 	}
 
 	// Create jvm*-server.options
-	if err := createJVMOptions(configInput, defaultConfigFileDir(), outputConfigFileDir()); err != nil {
+	if err := createJVMOptions(configInput, b.configInputDir, b.configOutputDir); err != nil {
 		return err
 	}
 
 	// Create cassandra.yaml
-	if err := createCassandraYaml(configInput, nodeInfo, defaultConfigFileDir(), outputConfigFileDir()); err != nil {
+	if err := createCassandraYaml(configInput, nodeInfo, b.configInputDir, b.configOutputDir); err != nil {
 		return err
 	}
 
@@ -125,18 +128,6 @@ func parseNodeInfo() (*NodeInfo, error) {
 	}
 
 	return n, nil
-}
-
-// findConfigFiles returns the path of config files in the cass-management-api (for Cassandra 4.1.x and up)
-func defaultConfigFileDir() string {
-	// $CASSANDRA_CONF could modify this, but we override it in the mgmt-api
-	return "/cassandra-base-config"
-	// return "/opt/cassandra/conf"
-}
-
-func outputConfigFileDir() string {
-	// docker-entrypoint.sh will copy the files from here, so we need all the outputs to target this
-	return "/config"
 }
 
 func createRackProperties(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string) error {

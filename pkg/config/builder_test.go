@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -55,6 +56,13 @@ var existingConfig = `
 }
 `
 
+func TestBuilderDefaults(t *testing.T) {
+	require := require.New(t)
+	builder := NewBuilder("", "")
+	require.Equal(defaultInputDir, builder.configInputDir)
+	require.Equal(defaultOutputDir, builder.configOutputDir)
+}
+
 func TestConfigInfoParsing(t *testing.T) {
 	require := require.New(t)
 	t.Setenv("CONFIG_FILE_DATA", existingConfig)
@@ -98,13 +106,43 @@ func TestParseNodeInfo(t *testing.T) {
 	require.Equal("10.0.0.1", nodeInfo.IP.String())
 }
 
+func TestBuild(t *testing.T) {
+	require := require.New(t)
+	t.Setenv("CONFIG_FILE_DATA", existingConfig)
+	inputDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+	require.NoError(err)
+	defer os.RemoveAll(tempDir)
+
+	b := NewBuilder(inputDir, tempDir)
+	require.NoError(b.Build(context.TODO()))
+
+	// Verify that all target files are there..
+	entries, err := os.ReadDir(tempDir)
+	require.NoError(err)
+
+	fileNames := make([]string, 0, len(entries))
+	for _, v := range entries {
+		fileNames = append(fileNames, v.Name())
+		f, err := v.Info()
+		require.NoError(err)
+		require.True(f.Size() > 0)
+	}
+
+	require.Contains(fileNames, "cassandra-env.sh")
+	require.Contains(fileNames, "cassandra-rackdc.properties")
+	require.Contains(fileNames, "cassandra.yaml")
+	require.Contains(fileNames, "jvm-server.options")
+	require.Contains(fileNames, "jvm11-server.options")
+}
+
 func TestCassandraYamlWriting(t *testing.T) {
 	require := require.New(t)
 	cassYamlDir := filepath.Join(envtest.RootDir(), "testfiles")
 	tempDir, err := os.MkdirTemp("", "client-test")
-	defer os.RemoveAll(tempDir)
-
 	require.NoError(err)
+
+	defer os.RemoveAll(tempDir)
 
 	// Create mandatory configs..
 	t.Setenv("CONFIG_FILE_DATA", existingConfig)
