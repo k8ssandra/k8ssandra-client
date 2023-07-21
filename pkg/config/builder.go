@@ -327,14 +327,17 @@ curOptions:
 				}
 			}
 
+			vc := v
+			vTc := vT
+
 			// Different value should not mean we can't compare
 			targetValueLoc := strings.Index(vT, "=")
 			if targetValueLoc > 0 && curValueLoc > 0 {
-				vT = vT[:targetValueLoc]
-				v = v[:curValueLoc]
+				vTc = vTc[:targetValueLoc]
+				vc = vc[:curValueLoc]
 			}
 
-			if v == vT {
+			if vc == vTc {
 				continue curOptions
 			}
 		}
