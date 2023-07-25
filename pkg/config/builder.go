@@ -93,7 +93,10 @@ func (b *Builder) Build(ctx context.Context) error {
 func parseConfigInput() (*ConfigInput, error) {
 	configInputStr := os.Getenv("CONFIG_FILE_DATA")
 	configInput := &ConfigInput{}
-	if err := json.Unmarshal([]byte(configInputStr), configInput); err != nil {
+
+	d := json.NewDecoder(strings.NewReader(configInputStr))
+	d.UseNumber() // This decodes the numbers as strings
+	if err := d.Decode(configInput); err != nil {
 		return nil, err
 	}
 
@@ -285,7 +288,7 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 					// We need another process here..
 					continue
 				}
-				targetOptions = append(targetOptions, outputVal.Output(v.(string)))
+				targetOptions = append(targetOptions, outputVal.Output(fmt.Sprintf("%v", v)))
 			}
 		}
 	}
@@ -302,7 +305,7 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 
 		if gcOpts, found := options["garbage_collector"]; found {
 			// Get the GC options
-			currentOptions = append(currentOptions, getGCOptions(gcOpts.(string))...)
+			currentOptions = append(currentOptions, getGCOptions(fmt.Sprintf("%v", gcOpts))...)
 		}
 	}
 

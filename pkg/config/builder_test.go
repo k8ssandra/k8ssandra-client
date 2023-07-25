@@ -15,43 +15,68 @@ import (
 var existingConfig = `
 {
 	"cassandra-env-sh": {
-	  "malloc-arena-max": 8,
-	  "additional-jvm-opts": [
+		"malloc-arena-max": 8,
+		"additional-jvm-opts": [
 		"-Dcassandra.system_distributed_replication=test-dc:1",
 		"-Dcom.sun.management.jmxremote.authenticate=true"
-	  ]
+		]
 	},
 	"jvm-server-options": {
-	  "initial_heap_size": "512m",
-	  "max_heap_size": "512m",
-	  "per_thread_stack_size": "384k",
-	  "additional-jvm-opts": [
+		"initial_heap_size": "512m",
+		"max_heap_size": "512m",
+		"per_thread_stack_size": "384k",
+		"additional-jvm-opts": [
 		"-Dcassandra.system_distributed_replication=test-dc:1",
 		"-Dcom.sun.management.jmxremote.authenticate=true"
-	  ]
+		]
 	},
 	"jvm11-server-options": {
 		"g1r_set_updating_pause_time_percent": "6",
 		"additional-jvm-opts": [
-			"-XX:MaxGCPauseMillis=350"
+		"-XX:MaxGCPauseMillis=350"
 		]
 	},
 	"cassandra-yaml": {
-	  "authenticator": "PasswordAuthenticator",
-	  "authorizer": "CassandraAuthorizer",
-	  "num_tokens": 256,
-	  "role_manager": "CassandraRoleManager",
-	  "start_rpc": false
+		"authenticator": "PasswordAuthenticator",
+		"authorizer": "CassandraAuthorizer",
+		"num_tokens": 256,
+		"role_manager": "CassandraRoleManager",
+		"start_rpc": false
 	},
 	"cluster-info": {
-	  "name": "test",
-	  "seeds": "test-seed-service,test-dc-additional-seed-service"
+		"name": "test",
+		"seeds": "test-seed-service,test-dc-additional-seed-service"
 	},
 	"datacenter-info": {
-	  "graph-enabled": 0,
-	  "name": "datacenter1",
-	  "solr-enabled": 0,
-	  "spark-enabled": 0
+		"graph-enabled": 0,
+		"name": "datacenter1",
+		"solr-enabled": 0,
+		"spark-enabled": 0
+	}
+}
+`
+
+var numericConfig = `
+{
+	"jvm-server-options": {
+		"max_heap_size": 524288000
+	},
+	"cassandra-yaml": {
+		"authenticator": "PasswordAuthenticator",
+		"authorizer": "CassandraAuthorizer",
+		"num_tokens": 256,
+		"role_manager": "CassandraRoleManager",
+		"start_rpc": false
+	},
+	"cluster-info": {
+		"name": "test",
+		"seeds": "test-seed-service,test-dc-additional-seed-service"
+	},
+	"datacenter-info": {
+		"graph-enabled": 0,
+		"name": "dc2",
+		"solr-enabled": 0,
+		"spark-enabled": 0
 	}
 }
 `
@@ -190,7 +215,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.Equal("PasswordAuthenticator", cassandraYaml["authenticator"])
 	require.Equal("CassandraAuthorizer", cassandraYaml["authorizer"])
 	require.Equal("CassandraRoleManager", cassandraYaml["role_manager"])
-	require.Equal(256, cassandraYaml["num_tokens"])
+	require.Equal("256", cassandraYaml["num_tokens"])
 	require.Equal(false, cassandraYaml["start_rpc"])
 }
 
@@ -330,6 +355,29 @@ func TestCassandraEnv(t *testing.T) {
 	require.Contains(lines, "export MALLOC_ARENA_MAX=8")
 	require.Contains(lines, "JVM_OPTS=\"$JVM_OPTS -Dcassandra.system_distributed_replication=test-dc:1\"")
 	require.Contains(lines, "JVM_OPTS=\"$JVM_OPTS -Dcom.sun.management.jmxremote.authenticate=true\"")
+}
+
+func TestReadOptionsWithNumeric(t *testing.T) {
+	// JSON Unmarshalling does not Unmarshal everything to type string, instead they can be int/floats/bool etc
+	require := require.New(t)
+
+	optionsDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+
+	defer os.RemoveAll(tempDir)
+	require.NoError(err)
+
+	t.Setenv("CONFIG_FILE_DATA", numericConfig)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+
+	require.NoError(createJVMOptions(configInput, optionsDir, tempDir))
+
+	lines, err := readFileToLines(tempDir, "jvm-server.options")
+	require.NoError(err)
+
+	require.Contains(lines, "-Xmx524288000")
 }
 
 // readFileToLines is a small test helper, reads file to []string (per line). This version does not filter anything, not even whitespace.
