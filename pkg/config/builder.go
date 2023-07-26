@@ -134,32 +134,6 @@ func parseNodeInfo() (*NodeInfo, error) {
 }
 
 func createRackProperties(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string) error {
-	// Write cassandra-rackdc.properties file with Datacenter and Rack information
-
-	// This implementation would preserve any extra keys.. but then again, our seedProvider doesn't support those
-	/*
-		rackFile := filepath.Join(sourceDir, "cassandra-rackdc.properties")
-		props, err := properties.LoadFile(rackFile, properties.UTF8)
-		if err != nil {
-			return err
-		}
-
-		props.Set("dc", configInput.DatacenterInfo.Name)
-		props.Set("rack", nodeInfo.Rack)
-
-		targetFile := filepath.Join(targetDir, "cassandra-rackdc.properties")
-		f, err := os.OpenFile(targetFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0770)
-		if err != nil {
-			return err
-		}
-
-		defer f.Close()
-
-		if _, err = props.WriteComment(f, "#", properties.UTF8); err != nil {
-			return err
-		}
-	*/
-
 	// This creates the cassandra-rackdc.properites with a template with only the values we currently support
 	targetFileT := filepath.Join(targetDir, "cassandra-rackdc.properties")
 	fT, err := os.OpenFile(targetFileT, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0770)
@@ -305,7 +279,7 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 
 		if gcOpts, found := options["garbage_collector"]; found {
 			// Get the GC options
-			currentOptions = append(currentOptions, getGCOptions(fmt.Sprintf("%v", gcOpts))...)
+			currentOptions = append(currentOptions, getGCOptions(fmt.Sprintf("%v", gcOpts), 11)...)
 		}
 	}
 
@@ -356,7 +330,7 @@ curOptions:
 	return nil
 }
 
-func getGCOptions(gcName string) []string {
+func getGCOptions(gcName string, jvmMajor int) []string {
 	switch gcName {
 	case "G1GC":
 		return defaultG1Settings
@@ -365,7 +339,11 @@ func getGCOptions(gcName string) []string {
 	case "Shenandoah":
 		return []string{"-XX:+UseShenandoahGC"}
 	case "ZGC":
-		return []string{"-XX:+UseZGC"}
+		zgcOpts := []string{"-XX:+UseZGC"}
+		if jvmMajor < 17 {
+			zgcOpts = append(zgcOpts, "-XX:+UnlockExperimentalVMOptions")
+		}
+		return zgcOpts
 	default:
 		// User needs to define all the settings
 		return []string{}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/k8ssandra/k8ssandra-client/internal/envtest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -329,7 +330,21 @@ func TestServerOptionsOutput(t *testing.T) {
 	for _, v := range defaultCMSSettings {
 		require.Contains(s11, v)
 	}
+}
 
+func TestGCOptions(t *testing.T) {
+	assert := assert.New(t)
+	assert.Equal(defaultG1Settings, getGCOptions("G1GC", 11))
+	assert.Equal(defaultG1Settings, getGCOptions("G1GC", 17))
+
+	assert.Equal(defaultCMSSettings, getGCOptions("CMS", 11))
+	assert.Equal(defaultCMSSettings, getGCOptions("CMS", 17))
+
+	assert.Equal([]string{"-XX:+UseShenandoahGC"}, getGCOptions("Shenandoah", 11))
+	assert.Equal([]string{"-XX:+UseShenandoahGC"}, getGCOptions("Shenandoah", 17))
+
+	assert.Equal([]string{"-XX:+UseZGC", "-XX:+UnlockExperimentalVMOptions"}, getGCOptions("ZGC", 11))
+	assert.Equal([]string{"-XX:+UseZGC"}, getGCOptions("ZGC", 17))
 }
 
 func TestCassandraEnv(t *testing.T) {
