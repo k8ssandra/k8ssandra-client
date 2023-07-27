@@ -110,26 +110,31 @@ func TestParseNodeInfo(t *testing.T) {
 	nodeInfo, err := parseNodeInfo()
 	require.NoError(err)
 	require.NotNil(nodeInfo)
-	require.Equal("172.27.0.1", nodeInfo.IP.String())
+	require.Equal("172.27.0.1", nodeInfo.ListenIP.String())
+	require.Equal("172.27.0.1", nodeInfo.BroadcastIP.String())
+	require.Equal("0.0.0.0", nodeInfo.RPCIP.String())
 	require.Equal("r1", nodeInfo.Rack)
 
 	t.Setenv("HOST_IP", "10.0.0.1")
 	nodeInfo, err = parseNodeInfo()
 	require.NoError(err)
 	require.NotNil(nodeInfo)
-	require.Equal("172.27.0.1", nodeInfo.IP.String())
+	require.Equal("172.27.0.1", nodeInfo.ListenIP.String())
+	require.Equal("172.27.0.1", nodeInfo.BroadcastIP.String())
 
 	t.Setenv("USE_HOST_IP_FOR_BROADCAST", "false")
 	nodeInfo, err = parseNodeInfo()
 	require.NoError(err)
 	require.NotNil(nodeInfo)
-	require.Equal("172.27.0.1", nodeInfo.IP.String())
+	require.Equal("172.27.0.1", nodeInfo.ListenIP.String())
+	require.Equal("172.27.0.1", nodeInfo.BroadcastIP.String())
 
 	t.Setenv("USE_HOST_IP_FOR_BROADCAST", "true")
 	nodeInfo, err = parseNodeInfo()
 	require.NoError(err)
 	require.NotNil(nodeInfo)
-	require.Equal("10.0.0.1", nodeInfo.IP.String())
+	require.Equal("172.27.0.1", nodeInfo.ListenIP.String())
+	require.Equal("10.0.0.1", nodeInfo.BroadcastIP.String())
 }
 
 func TestBuild(t *testing.T) {
@@ -209,7 +214,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 	seedProvider := seedProviders[0].(map[string]interface{})
 	require.Equal("org.apache.cassandra.locator.K8SeedProvider", seedProvider["class_name"])
 
-	listenIP := nodeInfo.IP.String()
+	listenIP := nodeInfo.ListenIP.String()
 	require.Equal(listenIP, cassandraYaml["listen_address"])
 
 	// Verify our changed properties are there
