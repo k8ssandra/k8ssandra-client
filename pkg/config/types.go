@@ -61,9 +61,11 @@ type DatacenterInfo struct {
 // Built from other sources
 
 type NodeInfo struct {
-	Name string
-	Rack string
-	IP   net.IP
+	Name        string
+	Rack        string
+	ListenIP    net.IP
+	BroadcastIP net.IP
+	RPCIP       net.IP
 }
 
 var (

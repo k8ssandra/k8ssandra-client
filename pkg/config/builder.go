@@ -111,6 +111,7 @@ func parseNodeInfo() (*NodeInfo, error) {
 	}
 
 	podIp := os.Getenv("POD_IP")
+	hostIp := os.Getenv("HOST_IP")
 
 	useHostIp := false
 	useHostIpStr := os.Getenv("USE_HOST_IP_FOR_BROADCAST")
@@ -122,12 +123,22 @@ func parseNodeInfo() (*NodeInfo, error) {
 		}
 	}
 
+	broadcastIp := podIp
 	if useHostIp {
-		podIp = os.Getenv("HOST_IP")
+		broadcastIp = hostIp
+	}
+
+	if ip := net.ParseIP(broadcastIp); ip != nil {
+		n.BroadcastIP = ip
 	}
 
 	if ip := net.ParseIP(podIp); ip != nil {
-		n.IP = ip
+		n.ListenIP = ip
+	}
+
+	// This is not currently overridable
+	if ip := net.ParseIP("0.0.0.0"); ip != nil {
+		n.RPCIP = ip
 	}
 
 	return n, nil
@@ -455,11 +466,10 @@ func k8ssandraOverrides(merged map[string]interface{}, configInput *ConfigInput,
 		},
 	}
 
-	listenIP := nodeInfo.IP.String()
-	merged["listen_address"] = listenIP
-	merged["rpc_address"] = listenIP
-	delete(merged, "broadcast_address")     // Sets it to the same as listen_address
-	delete(merged, "rpc_broadcast_address") // Sets it to the same as rpc_address
+	merged["listen_address"] = nodeInfo.ListenIP.String()
+	merged["rpc_address"] = nodeInfo.RPCIP.String()
+	delete(merged, "broadcast_address") // Sets it to the same as listen_address
+	merged["broadcast_rpc_address"] = nodeInfo.BroadcastIP
 
 	return merged
 }
