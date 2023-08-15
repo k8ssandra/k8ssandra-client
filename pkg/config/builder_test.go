@@ -213,6 +213,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 	seedProviders := cassandraYaml["seed_provider"].([]interface{})
 	seedProvider := seedProviders[0].(map[string]interface{})
 	require.Equal("org.apache.cassandra.locator.K8SeedProvider", seedProvider["class_name"])
+	require.Equal("GossipingPropertyFileSnitch", cassandraYaml["endpoint_snitch"])
 
 	listenIP := nodeInfo.ListenIP.String()
 	require.Equal(listenIP, cassandraYaml["listen_address"])
