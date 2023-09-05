@@ -17,11 +17,23 @@ COPY pkg/ pkg/
 # Build
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o kubectl-k8ssandra cmd/kubectl-k8ssandra/main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+# Build the UBI image
+FROM redhat/ubi8-micro:latest
+
+ARG VERSION
+
+LABEL maintainer="DataStax, Inc <info@datastax.com>"
+LABEL name="k8ssandra-client"
+LABEL vendor="DataStax, Inc"
+LABEL release="${VERSION}"
+LABEL version="${VERSION}"
+LABEL summary="Client for k8ssandra installations"
+LABEL description="Part of the toolset for the DataStax Kubernetes Operator for Apache Cassandra®."
+
 WORKDIR /
 COPY --from=builder /workspace/kubectl-k8ssandra .
-USER nonroot:nonroot
+COPY ./LICENSE /licenses/
+
+USER 65532:65532
 
 ENTRYPOINT ["/kubectl-k8ssandra"]
