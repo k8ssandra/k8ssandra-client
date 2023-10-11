@@ -53,3 +53,26 @@ jobs:
           platforms: linux/amd64,linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: Tag and push images for Red Hat certification
+        shell: bash
+        if: ${{ !env.ACT }}
+        run: |
+          docker tag k8ssandra/k8ssandra-client:${{ steps.vars.outputs.tag_name}} quay.io/redhat-isv-containers/64f725593ba91d38e7246955:${{ steps.vars.outputs.tag_name}}
+          docker login -u redhat-isv-containers+64f725593ba91d38e7246955-robot quay.io -p ${{ secrets.K8SSANDRA_CLIENT_CONNECT_SECRET }}
+          docker push quay.io/redhat-isv-containers/64f725593ba91d38e7246955:${{ steps.vars.outputs.tag_name}}
+      - name: Install CLI tools from OpenShift Mirror
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          source: "mirror"
+          oc: "4"
+      - name: Install CLI tools from GitHub
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          source: "github"
+          github_pat: ${{ github.token }}
+          preflight: "latest"
+      - name: Run preflight checks and submit results
+        shell: bash
+        run: |
+          docker login -u redhat-isv-containers+5ebee0e40e3deaf258b160d1-robot quay.io -p ${{ secrets.K8SSANDRA_CLIENT_CONNECT_SECRET }}
+          preflight check container quay.io/redhat-isv-containers/64f725593ba91d38e7246955:${{ steps.vars.outputs.tag_name}} --certification-project-id=64f725593ba91d38e7246955 --pyxis-api-token=${{ secrets.PREFLIGHT_KEY }} --submit --docker-config=$HOME/.docker/config.json
