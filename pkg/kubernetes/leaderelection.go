@@ -15,7 +15,7 @@ import (
 )
 
 func WaitForLock(ctx context.Context, namespace string, lockName string, client *NamespacedClient) error {
-	lock, err := NewResourceLock(namespace, lockName, client.config)
+	lock, err := NewResourceLock(namespace, lockName, client.Config)
 	if err != nil {
 		return err
 	}

@@ -4,11 +4,12 @@ go 1.20
 
 require (
 	github.com/adutra/goalesce v0.0.0-20221124153206-5643f911003d
+	github.com/burmanm/definitions-parser v0.0.0-20230720114634-62c738b72e61
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/google/uuid v1.3.0
-	github.com/k8ssandra/cass-operator v1.15.1-0.20230613083330-58dc7268f372
+	github.com/k8ssandra/cass-operator v1.17.2
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
@@ -35,7 +36,6 @@ require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/burmanm/definitions-parser v0.0.0-20230720114634-62c738b72e61 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
@@ -129,6 +129,7 @@ require (
 	github.com/xlab/treeprint v1.1.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
+	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
