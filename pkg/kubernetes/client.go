@@ -14,7 +14,7 @@ import (
 // NamespacedClient encapsulates namespacedClient with public namespace and restConfig
 type NamespacedClient struct {
 	client.Client
-	config    *rest.Config
+	Config    *rest.Config
 	Namespace string
 }
 
@@ -38,7 +38,7 @@ func GetClientInNamespace(restConfig *rest.Config, namespace string) (Namespaced
 
 	c = client.NewNamespacedClient(c, namespace)
 	return NamespacedClient{
-		config: restConfig,
+		Config: restConfig,
 		Client: c,
 	}, nil
 	// return c, nil
