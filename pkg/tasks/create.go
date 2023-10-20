@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"time"
 
 	cassdcapi "github.com/k8ssandra/cass-operator/apis/cassandra/v1beta1"
 	controlapi "github.com/k8ssandra/cass-operator/apis/control/v1alpha1"
@@ -20,8 +21,51 @@ func CreateRestartTask(ctx context.Context, kubeClient client.Client, dc *cassdc
 	return CreateTask(ctx, kubeClient, controlapi.CommandRestart, dc, &args)
 }
 
+/*
+	// Process all the reconcileEveryPodTasks
+	switch job.Command {
+	case api.CommandRebuild:
+		rebuild(taskConfig)
+	case api.CommandCleanup:
+		cleanup(taskConfig)
+	case api.CommandUpgradeSSTables:
+		upgradesstables(taskConfig)
+	case api.CommandScrub:
+		scrub(taskConfig)
+	case api.CommandCompaction:
+		compact(taskConfig)
+	case api.CommandMove:
+		r.move(taskConfig)
+	case api.CommandFlush:
+		flush(taskConfig)
+	case api.CommandGarbageCollect:
+		gc(taskConfig)
+*/
+
+func CreateReplaceTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, podName string) (*controlapi.CassandraTask, error) {
+	args := controlapi.JobArguments{}
+	if podName == "" {
+		return nil, fmt.Errorf("podName must be specified")
+	}
+	args.PodName = podName
+
+	return CreateTask(ctx, kubeClient, controlapi.CommandReplaceNode, dc, &args)
+}
+
+func CreateFlushTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, rackName string, podName string) (*controlapi.CassandraTask, error) {
+	args := controlapi.JobArguments{}
+	if rackName != "" {
+		args.RackName = rackName
+	}
+	if podName != "" {
+		args.PodName = podName
+	}
+
+	return CreateTask(ctx, kubeClient, controlapi.CommandFlush, dc, &args)
+}
+
 func CreateTask(ctx context.Context, kubeClient client.Client, command controlapi.CassandraCommand, dc *cassdcapi.CassandraDatacenter, args *controlapi.JobArguments) (*controlapi.CassandraTask, error) {
-	generatedName := fmt.Sprintf("%s-command-time?", dc.Name)
+	generatedName := fmt.Sprintf("%s-%s-%d", dc.Name, command, time.Now().Unix())
 	task := &controlapi.CassandraTask{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generatedName,

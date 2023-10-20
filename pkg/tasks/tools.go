@@ -15,8 +15,6 @@ func WaitForCompletion(ctx context.Context, kubeClient client.Client, task *cont
 	return WaitForCompletionKey(ctx, kubeClient, taskKey)
 }
 
-// TODO Add --timeout parameter like kubectl wait has
-
 func WaitForCompletionKey(ctx context.Context, kubeClient client.Client, taskKey types.NamespacedName) error {
 	err := waitutil.PollImmediate(5*time.Second, 10*time.Minute, func() (done bool, err error) {
 		task := &controlapi.CassandraTask{}
