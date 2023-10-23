@@ -7,53 +7,189 @@ import (
 
 	cassdcapi "github.com/k8ssandra/cass-operator/apis/cassandra/v1beta1"
 	controlapi "github.com/k8ssandra/cass-operator/apis/control/v1alpha1"
+	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Restart
+
 func CreateRestartTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, rackName string) (*controlapi.CassandraTask, error) {
-	args := controlapi.JobArguments{}
+	args := restartArguments(rackName)
+	return CreateTask(ctx, kubeClient, controlapi.CommandRestart, dc, args)
+}
+
+func restartArguments(rackName string) *controlapi.JobArguments {
+	args := &controlapi.JobArguments{}
 	if rackName != "" {
 		args.RackName = rackName
 	}
 
-	return CreateTask(ctx, kubeClient, controlapi.CommandRestart, dc, &args)
+	return args
 }
 
-/*
-	// Process all the reconcileEveryPodTasks
-	switch job.Command {
-	case api.CommandRebuild:
-		rebuild(taskConfig)
-	case api.CommandCleanup:
-		cleanup(taskConfig)
-	case api.CommandUpgradeSSTables:
-		upgradesstables(taskConfig)
-	case api.CommandScrub:
-		scrub(taskConfig)
-	case api.CommandCompaction:
-		compact(taskConfig)
-	case api.CommandMove:
-		r.move(taskConfig)
-	case api.CommandFlush:
-		flush(taskConfig)
-	case api.CommandGarbageCollect:
-		gc(taskConfig)
-*/
+func CreateClusterRestartTask(ctx context.Context, kubeClient client.Client, namespace, kcName, dcName, rackName string) (*k8ssandrataskapi.K8ssandraTask, error) {
+	args := restartArguments(rackName)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandRestart, namespace, kcName, []string{dcName}, args)
+}
+
+// Replace
 
 func CreateReplaceTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, podName string) (*controlapi.CassandraTask, error) {
-	args := controlapi.JobArguments{}
+	args, err := replaceArguments(podName)
+	if err != nil {
+		return nil, err
+	}
+
+	return CreateTask(ctx, kubeClient, controlapi.CommandReplaceNode, dc, args)
+}
+
+func replaceArguments(podName string) (*controlapi.JobArguments, error) {
 	if podName == "" {
 		return nil, fmt.Errorf("podName must be specified")
 	}
-	args.PodName = podName
-
-	return CreateTask(ctx, kubeClient, controlapi.CommandReplaceNode, dc, &args)
+	return &controlapi.JobArguments{PodName: podName}, nil
 }
 
+func CreateClusterReplaceTask(ctx context.Context, kubeClient client.Client, namespace, kcName, dcName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
+	args, err := replaceArguments(podName)
+	if err != nil {
+		return nil, err
+	}
+
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandReplaceNode, namespace, kcName, []string{dcName}, args)
+}
+
+// Flush
+
 func CreateFlushTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, rackName string, podName string) (*controlapi.CassandraTask, error) {
-	args := controlapi.JobArguments{}
+	args := commonArguments(rackName, podName)
+	return CreateTask(ctx, kubeClient, controlapi.CommandFlush, dc, args)
+}
+
+func CreateClusterFlushTask(ctx context.Context, kubeClient client.Client, namespace, kcName, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
+	args := commonArguments(rackName, podName)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandFlush, namespace, kcName, []string{dcName}, args)
+}
+
+// Cleanup
+
+func CreateCleanupTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, rackName string, podName string) (*controlapi.CassandraTask, error) {
+	args := commonArguments(rackName, podName)
+	return CreateTask(ctx, kubeClient, controlapi.CommandCleanup, dc, args)
+}
+
+func CreateClusterCleanupTask(ctx context.Context, kubeClient client.Client, namespace, kcName, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
+	args := commonArguments(rackName, podName)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandCleanup, namespace, kcName, []string{dcName}, args)
+}
+
+// UpgradeSSTables
+
+func CreateUpgradeSSTablesTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, rackName string, podName string) (*controlapi.CassandraTask, error) {
+	args := commonArguments(rackName, podName)
+	return CreateTask(ctx, kubeClient, controlapi.CommandUpgradeSSTables, dc, args)
+}
+
+func CreateClusterUpgradeSSTablesTask(ctx context.Context, kubeClient client.Client, namespace, kcName, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
+	args := commonArguments(rackName, podName)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandUpgradeSSTables, namespace, kcName, []string{dcName}, args)
+}
+
+// Scrub
+
+func CreateScrubTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, rackName string, podName string) (*controlapi.CassandraTask, error) {
+	args := commonArguments(rackName, podName)
+	return CreateTask(ctx, kubeClient, controlapi.CommandScrub, dc, args)
+}
+
+func CreateClusterScrubTask(ctx context.Context, kubeClient client.Client, namespace, kcName, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
+	args := commonArguments(rackName, podName)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandScrub, namespace, kcName, []string{dcName}, args)
+}
+
+// Compaction
+
+func CreateCompactionTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, rackName string, podName, keyspaceName string, tables []string) (*controlapi.CassandraTask, error) {
+	args, err := compactionArguments(rackName, podName, keyspaceName, tables)
+	if err != nil {
+		return nil, err
+	}
+	return CreateTask(ctx, kubeClient, controlapi.CommandRebuild, dc, args)
+}
+
+func compactionArguments(rackName, podName, keyspaceName string, tables []string) (*controlapi.JobArguments, error) {
+	args := commonArguments(rackName, podName)
+	if keyspaceName != "" {
+		args.KeyspaceName = keyspaceName
+	}
+
+	if keyspaceName == "" && len(tables) > 0 {
+		return nil, fmt.Errorf("keyspace must be specified when tables are specified")
+	}
+
+	if len(tables) > 0 {
+		args.Tables = tables
+	}
+
+	return args, nil
+}
+
+func CreateClusterCompactionTask(ctx context.Context, kubeClient client.Client, namespace, kcName, dcName, rackName, podName, keyspaceName string, tables []string) (*k8ssandrataskapi.K8ssandraTask, error) {
+	args, err := compactionArguments(rackName, podName, keyspaceName, tables)
+	if err != nil {
+		return nil, err
+	}
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandRebuild, namespace, kcName, []string{dcName}, args)
+}
+
+// Move
+
+// GarbageCollect
+
+func CreateGCTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, rackName string, podName string) (*controlapi.CassandraTask, error) {
+	args := commonArguments(rackName, podName)
+	return CreateTask(ctx, kubeClient, controlapi.CommandGarbageCollect, dc, args)
+}
+
+func CreateClusterGCTask(ctx context.Context, kubeClient client.Client, namespace, kcName, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
+	args := commonArguments(rackName, podName)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandGarbageCollect, namespace, kcName, []string{dcName}, args)
+}
+
+// Rebuild
+
+func CreateRebuildTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.CassandraDatacenter, rackName string, podName, sourceDatacenter string) (*controlapi.CassandraTask, error) {
+	args, err := rebuildArguments(rackName, podName, sourceDatacenter)
+	if err != nil {
+		return nil, err
+	}
+	return CreateTask(ctx, kubeClient, controlapi.CommandRebuild, dc, args)
+}
+
+func rebuildArguments(rackName, podName, sourceDatacenter string) (*controlapi.JobArguments, error) {
+	args := commonArguments(rackName, podName)
+	if sourceDatacenter != "" {
+		return nil, fmt.Errorf("sourceDatacenter must be specified")
+	}
+	args.SourceDatacenter = sourceDatacenter
+
+	return args, nil
+}
+
+func CreateClusterRebuildTask(ctx context.Context, kubeClient client.Client, namespace, kcName, dcName, rackName, podName, sourceDatacenter string) (*k8ssandrataskapi.K8ssandraTask, error) {
+	args, err := rebuildArguments(rackName, podName, sourceDatacenter)
+	if err != nil {
+		return nil, err
+	}
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandRebuild, namespace, kcName, []string{dcName}, args)
+}
+
+// Assistance methods
+
+func commonArguments(rackName, podName string) *controlapi.JobArguments {
+	args := &controlapi.JobArguments{}
 	if rackName != "" {
 		args.RackName = rackName
 	}
@@ -61,7 +197,7 @@ func CreateFlushTask(ctx context.Context, kubeClient client.Client, dc *cassdcap
 		args.PodName = podName
 	}
 
-	return CreateTask(ctx, kubeClient, controlapi.CommandFlush, dc, &args)
+	return args
 }
 
 func CreateTask(ctx context.Context, kubeClient client.Client, command controlapi.CassandraCommand, dc *cassdcapi.CassandraDatacenter, args *controlapi.JobArguments) (*controlapi.CassandraTask, error) {
