@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
 	cassdcapi "github.com/k8ssandra/cass-operator/apis/cassandra/v1beta1"
@@ -170,7 +171,7 @@ func CreateRebuildTask(ctx context.Context, kubeClient client.Client, dc *cassdc
 
 func rebuildArguments(rackName, podName, sourceDatacenter string) (*controlapi.JobArguments, error) {
 	args := commonArguments(rackName, podName)
-	if sourceDatacenter != "" {
+	if sourceDatacenter == "" {
 		return nil, fmt.Errorf("sourceDatacenter must be specified")
 	}
 	args.SourceDatacenter = sourceDatacenter
@@ -201,7 +202,10 @@ func commonArguments(rackName, podName string) *controlapi.JobArguments {
 }
 
 func CreateTask(ctx context.Context, kubeClient client.Client, command controlapi.CassandraCommand, dc *cassdcapi.CassandraDatacenter, args *controlapi.JobArguments) (*controlapi.CassandraTask, error) {
-	generatedName := fmt.Sprintf("%s-%s-%d", dc.Name, command, time.Now().Unix())
+	generatedName := fmt.Sprintf("%s-%s-%d-%d", dc.Name, command, time.Now().Unix(), rand.Int31())
+	if len(generatedName) > 63 {
+		generatedName = generatedName[:63]
+	}
 	task := &controlapi.CassandraTask{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generatedName,
