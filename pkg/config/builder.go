@@ -471,6 +471,7 @@ func k8ssandraOverrides(merged map[string]interface{}, configInput *ConfigInput,
 	delete(merged, "broadcast_address") // Sets it to the same as listen_address
 	merged["broadcast_rpc_address"] = nodeInfo.BroadcastIP
 	merged["endpoint_snitch"] = "GossipingPropertyFileSnitch"
+	merged["cluster_name"] = configInput.ClusterInfo.Name
 
 	return merged
 }
