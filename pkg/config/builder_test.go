@@ -210,6 +210,9 @@ func TestCassandraYamlWriting(t *testing.T) {
 	}
 
 	// Verify our k8ssandra overrides are set
+	clusterName := configInput.ClusterInfo.Name
+	require.Equal(clusterName, cassandraYaml["cluster_name"])
+
 	seedProviders := cassandraYaml["seed_provider"].([]interface{})
 	seedProvider := seedProviders[0].(map[string]interface{})
 	require.Equal("org.apache.cassandra.locator.K8SeedProvider", seedProvider["class_name"])
