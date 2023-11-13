@@ -24,6 +24,7 @@ func TestCreateRestartTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandRestart, task.Spec.Jobs[0].Command)
 }
 
 func TestCreateClusterRestartTask(t *testing.T) {
@@ -38,6 +39,7 @@ func TestCreateClusterRestartTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandRestart, task.Spec.Template.Jobs[0].Command)
 }
 
 func TestCreateReplaceTask(t *testing.T) {
@@ -52,6 +54,7 @@ func TestCreateReplaceTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandReplaceNode, task.Spec.Jobs[0].Command)
 
 	_, err = tasks.CreateReplaceTask(context.Background(), kubeClient, dc, "")
 	assert.Error(t, err)
@@ -69,6 +72,7 @@ func TestCreateClusterReplaceTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandReplaceNode, task.Spec.Template.Jobs[0].Command)
 
 	_, err = tasks.CreateClusterReplaceTask(context.Background(), kubeClient, namespace, cluster, dcName, "")
 	assert.Error(t, err)
@@ -87,6 +91,7 @@ func TestCreateFlushTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandFlush, task.Spec.Jobs[0].Command)
 }
 
 func TestCreateClusterFlushTask(t *testing.T) {
@@ -102,6 +107,7 @@ func TestCreateClusterFlushTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandFlush, task.Spec.Template.Jobs[0].Command)
 }
 
 func TestCreateCleanupTask(t *testing.T) {
@@ -117,6 +123,7 @@ func TestCreateCleanupTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandCleanup, task.Spec.Jobs[0].Command)
 }
 
 func TestCreateClusterCleanupTask(t *testing.T) {
@@ -132,6 +139,7 @@ func TestCreateClusterCleanupTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandCleanup, task.Spec.Template.Jobs[0].Command)
 }
 
 func TestCreateUpgradeSSTablesTask(t *testing.T) {
@@ -147,6 +155,7 @@ func TestCreateUpgradeSSTablesTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandUpgradeSSTables, task.Spec.Jobs[0].Command)
 }
 
 func TestCreateClusterUpgradeSSTablesTask(t *testing.T) {
@@ -162,6 +171,7 @@ func TestCreateClusterUpgradeSSTablesTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandUpgradeSSTables, task.Spec.Template.Jobs[0].Command)
 }
 
 func TestCreateScrubTask(t *testing.T) {
@@ -177,6 +187,7 @@ func TestCreateScrubTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandScrub, task.Spec.Jobs[0].Command)
 }
 
 func TestCreateClusterScrubTask(t *testing.T) {
@@ -192,6 +203,7 @@ func TestCreateClusterScrubTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandScrub, task.Spec.Template.Jobs[0].Command)
 }
 
 func TestCreateCompactionTask(t *testing.T) {
@@ -209,6 +221,7 @@ func TestCreateCompactionTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandCompaction, task.Spec.Jobs[0].Command)
 
 	// Keyspace should be required if tables is set
 	_, err = tasks.CreateCompactionTask(context.Background(), kubeClient, dc, rackName, podName, "", tables)
@@ -236,6 +249,7 @@ func TestCreateClusterCompactionTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandCompaction, task.Spec.Template.Jobs[0].Command)
 
 	// Only cluster is really required
 	task, err = tasks.CreateClusterCompactionTask(context.Background(), kubeClient, namespace, cluster, "", "", "", "", nil)
@@ -257,6 +271,7 @@ func TestCreateGCTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandGarbageCollect, task.Spec.Jobs[0].Command)
 }
 
 func TestCreateClusterGCTask(t *testing.T) {
@@ -272,6 +287,7 @@ func TestCreateClusterGCTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandGarbageCollect, task.Spec.Template.Jobs[0].Command)
 }
 
 func TestCreateRebuildTask(t *testing.T) {
@@ -288,6 +304,7 @@ func TestCreateRebuildTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandRebuild, task.Spec.Jobs[0].Command)
 
 	// Empty sourceDatacenter should result in validation error
 	_, err = tasks.CreateRebuildTask(context.Background(), kubeClient, dc, rackName, podName, "")
@@ -308,6 +325,7 @@ func TestCreateClusterRebuildTask(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandRebuild, task.Spec.Template.Jobs[0].Command)
 
 	_, err = tasks.CreateClusterRebuildTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, "")
 	assert.Error(t, err)

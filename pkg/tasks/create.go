@@ -117,7 +117,7 @@ func CreateCompactionTask(ctx context.Context, kubeClient client.Client, dc *cas
 	if err != nil {
 		return nil, err
 	}
-	return CreateTask(ctx, kubeClient, controlapi.CommandRebuild, dc, args)
+	return CreateTask(ctx, kubeClient, controlapi.CommandCompaction, dc, args)
 }
 
 func compactionArguments(rackName, podName, keyspaceName string, tables []string) (*controlapi.JobArguments, error) {
@@ -142,7 +142,7 @@ func CreateClusterCompactionTask(ctx context.Context, kubeClient client.Client, 
 	if err != nil {
 		return nil, err
 	}
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandRebuild, namespace, cluster, []string{dcName}, args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandCompaction, namespace, cluster, []string{dcName}, args)
 }
 
 // Move
