@@ -3,8 +3,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"time"
 
 	cassdcapi "github.com/k8ssandra/cass-operator/apis/cassandra/v1beta1"
 	controlapi "github.com/k8ssandra/cass-operator/apis/control/v1alpha1"
@@ -22,9 +20,8 @@ func CreateRestartTask(ctx context.Context, kubeClient client.Client, dc *cassdc
 }
 
 func restartArguments(rackName string) *controlapi.JobArguments {
-	args := &controlapi.JobArguments{}
-	if rackName != "" {
-		args.RackName = rackName
+	args := &controlapi.JobArguments{
+		RackName: rackName,
 	}
 
 	return args
@@ -122,9 +119,7 @@ func CreateCompactionTask(ctx context.Context, kubeClient client.Client, dc *cas
 
 func compactionArguments(rackName, podName, keyspaceName string, tables []string) (*controlapi.JobArguments, error) {
 	args := commonArguments(rackName, podName)
-	if keyspaceName != "" {
-		args.KeyspaceName = keyspaceName
-	}
+	args.KeyspaceName = keyspaceName
 
 	if keyspaceName == "" && len(tables) > 0 {
 		return nil, fmt.Errorf("keyspace must be specified when tables are specified")
@@ -190,25 +185,16 @@ func CreateClusterRebuildTask(ctx context.Context, kubeClient client.Client, nam
 // Assistance methods
 
 func commonArguments(rackName, podName string) *controlapi.JobArguments {
-	args := &controlapi.JobArguments{}
-	if rackName != "" {
-		args.RackName = rackName
+	return &controlapi.JobArguments{
+		RackName: rackName,
+		PodName:  podName,
 	}
-	if podName != "" {
-		args.PodName = podName
-	}
-
-	return args
 }
 
 func CreateTask(ctx context.Context, kubeClient client.Client, command controlapi.CassandraCommand, dc *cassdcapi.CassandraDatacenter, args *controlapi.JobArguments) (*controlapi.CassandraTask, error) {
-	generatedName := fmt.Sprintf("%s-%s-%d-%d", dc.Name, command, time.Now().Unix(), rand.Int31())
-	if len(generatedName) > 63 {
-		generatedName = generatedName[:63]
-	}
 	task := &controlapi.CassandraTask{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      generatedName,
+			Name:      createName(dc.Name, string(command)),
 			Namespace: dc.Namespace,
 		},
 		Spec: controlapi.CassandraTaskSpec{

@@ -2,9 +2,11 @@ package tasks
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	controlapi "github.com/k8ssandra/cass-operator/apis/control/v1alpha1"
+	"github.com/k8ssandra/k8ssandra-client/pkg/util"
 	"k8s.io/apimachinery/pkg/types"
 	waitutil "k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,4 +28,14 @@ func WaitForCompletionKey(ctx context.Context, kubeClient client.Client, taskKey
 	})
 
 	return err
+}
+
+func createName(first, second string) string {
+	staticPart := fmt.Sprintf("%s-%s", first, second)
+	dynPart := fmt.Sprintf("%d%s", time.Now().UTC().Unix(), util.RandomKubeCompatibleText(8))
+	if len(staticPart) > 45 {
+		staticPart = staticPart[:45]
+	}
+
+	return fmt.Sprintf("%s%s", staticPart, dynPart)
 }

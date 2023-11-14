@@ -1,4 +1,3 @@
-// Create tests for all CreateCluster*Task functions using envtest
 package tasks_test
 
 import (
@@ -338,6 +337,21 @@ func TestCreateTask(t *testing.T) {
 	command := controlapi.CommandRestart
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
+	args := &controlapi.JobArguments{}
+
+	task, err := tasks.CreateTask(context.Background(), kubeClient, command, dc, args)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, task)
+}
+
+func TestCreateTaskLongName(t *testing.T) {
+	namespace := env.CreateNamespace(t)
+	kubeClient := env.Client(namespace)
+
+	command := controlapi.CommandRestart
+	dc := &cassdcapi.CassandraDatacenter{}
+	dc.Name = "you-never-know-what-kind-of-names-people-come-up-with-for-no-reason-at-all"
 	args := &controlapi.JobArguments{}
 
 	task, err := tasks.CreateTask(context.Background(), kubeClient, command, dc, args)

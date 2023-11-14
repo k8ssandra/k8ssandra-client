@@ -3,8 +3,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"time"
 
 	controlapi "github.com/k8ssandra/cass-operator/apis/control/v1alpha1"
 	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
@@ -18,13 +16,9 @@ func CreateClusterTask(ctx context.Context, kubeClient client.Client, command co
 		return nil, fmt.Errorf("clusterName and namespace must be specified")
 	}
 
-	generatedName := fmt.Sprintf("%s-%s-%d-%d", kcName, command, time.Now().Unix(), rand.Int31())
-	if len(generatedName) > 63 {
-		generatedName = generatedName[:63]
-	}
 	task := &k8ssandrataskapi.K8ssandraTask{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      generatedName,
+			Name:      createName(kcName, string(command)),
 			Namespace: namespace,
 		},
 		Spec: k8ssandrataskapi.K8ssandraTaskSpec{
