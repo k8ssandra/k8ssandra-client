@@ -64,7 +64,7 @@ jobs:
           load: false
           file: cmd/kubectl-k8ssandra/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: k8ssandra/k8ssandra-client:${{ steps.vars.outputs.sha_short }}, k8ssandra/k8ssandra-client:latest
+          tags: k8ssandra/k8ssandra-client:${{ steps.vars.outputs.sha_short }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache

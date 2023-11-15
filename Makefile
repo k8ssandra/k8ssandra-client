@@ -1,4 +1,4 @@
-VERSION ?= 0.2.1
+VERSION ?= 0.3.0
 
 COMMIT := $(shell git rev-parse --short HEAD)
 DATE := $(shell date +%Y%m%d)
@@ -9,10 +9,12 @@ IMAGE_TAG_BASE ?= $(ORG)/k8ssandra-client
 
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):v$(VERSION)
-IMG_LATEST ?= $(IMAGE_TAG_BASE):latest
 
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.27.x
 
 .PHONY: all
 all: build
@@ -43,8 +45,8 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: fmt vet lint ## Run tests
-	go test -v ./...
+test: fmt vet lint envtest ## Run tests
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v ./... -coverprofile cover.out
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint against code
@@ -56,11 +58,10 @@ build: test ## Build kubectl-k8ssandra
 
 .PHONY: docker-build
 docker-build: ## Build k8ssandra-client docker image
-	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG_LATEST} -t ${IMG} . --load -f cmd/kubectl-k8ssandra/Dockerfile
+	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG} . --load -f cmd/kubectl-k8ssandra/Dockerfile
 
 .PHONY: kind-load
 kind-load: ## Load k8ssandra-client:latest to kind
-	kind load docker-image ${IMG_LATEST}
 	kind load docker-image ${IMG}
 
 ##@ Tools / Dependencies
@@ -73,8 +74,14 @@ $(LOCALBIN):
 ## Tool binaries
 
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
+ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 GOLINT_VERSION ?= 1.55.0
+
+.PHONY: envtest
+envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	test -s $(ENVTEST) || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: golangci-lint
 golangci-lint:

@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	cassdcapi "github.com/k8ssandra/cass-operator/apis/cassandra/v1beta1"
+	controlapi "github.com/k8ssandra/cass-operator/apis/control/v1alpha1"
+	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
+
 	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
 	"k8s.io/kubectl/pkg/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -34,7 +37,7 @@ type Environment struct {
 func NewEnvironment() *Environment {
 	env := &Environment{}
 	env.env = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join(RootDir(), "config", "crd"), filepath.Join(RootDir(), "testfiles", "crd")},
+		CRDDirectoryPaths:     []string{filepath.Join(RootDir(), "testfiles", "crd")},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -62,6 +65,14 @@ func (e *Environment) start() {
 	}
 
 	if err := cassdcapi.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
+
+	if err := controlapi.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
+
+	if err := k8ssandrataskapi.AddToScheme(scheme.Scheme); err != nil {
 		panic(err)
 	}
 
