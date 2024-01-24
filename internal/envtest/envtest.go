@@ -12,6 +12,7 @@ import (
 	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
 
 	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -100,4 +101,8 @@ func (e *Environment) CreateNamespace(t *testing.T) string {
 	}
 
 	return namespace
+}
+
+func (e *Environment) RestConfig() *rest.Config {
+	return e.env.Config
 }
