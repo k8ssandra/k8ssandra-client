@@ -12,6 +12,7 @@ import (
 	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
 
 	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -74,6 +75,10 @@ func (e *Environment) start() {
 	}
 
 	if err := k8ssandrataskapi.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
+
+	if err := apiextensions.AddToScheme(scheme.Scheme); err != nil {
 		panic(err)
 	}
 

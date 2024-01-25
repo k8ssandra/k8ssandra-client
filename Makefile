@@ -14,7 +14,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.27.x
+ENVTEST_K8S_VERSION = 1.28.x
 
 .PHONY: all
 all: build

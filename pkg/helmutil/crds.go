@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-
+	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	deser "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,14 +37,18 @@ func NewUpgrader(c client.Client, repoName, repoURL, chartName string) (*Upgrade
 
 // Upgrade installs the missing CRDs or updates them if they exists already
 func (u *Upgrader) Upgrade(ctx context.Context, targetVersion string) ([]unstructured.Unstructured, error) {
-	extractDir, err := DownloadChartRelease(u.repoName, u.repoURL, u.chartName, targetVersion)
+	downloadDir, err := DownloadChartRelease(u.repoName, u.repoURL, u.chartName, targetVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	// reaper and medusa subdirs have the required yaml files
-	chartPath := filepath.Join(extractDir, u.repoName)
-	defer os.RemoveAll(chartPath)
+	extractDir, err := ExtractChartRelease(downloadDir, targetVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	chartPath := filepath.Join(extractDir, u.chartName)
+	defer os.RemoveAll(downloadDir)
 
 	crds := make([]unstructured.Unstructured, 0)
 
@@ -58,17 +62,19 @@ func (u *Upgrader) Upgrade(ctx context.Context, targetVersion string) ([]unstruc
 		}
 	}
 
-	var res []client.Object
 	for _, obj := range crds {
-		res = append(res, &obj)
-	}
-
-	for _, obj := range res {
-		if err := u.client.Create(context.TODO(), obj); err != nil {
-			if apierrors.IsAlreadyExists(err) {
-				if err := u.client.Update(context.TODO(), obj); err != nil {
-					return nil, err
-				}
+		existingCrd := obj.DeepCopy()
+		err = u.client.Get(context.TODO(), client.ObjectKey{Name: obj.GetName()}, existingCrd)
+		if apierrors.IsNotFound(err) {
+			if err = u.client.Create(context.TODO(), &obj); err != nil {
+				return nil, errors.Wrapf(err, "failed to create CRD %s", obj.GetName())
+			}
+		} else if err != nil {
+			return nil, errors.Wrapf(err, "failed to fetch state of %s", obj.GetName())
+		} else {
+			obj.SetResourceVersion(existingCrd.GetResourceVersion())
+			if err = u.client.Update(context.TODO(), &obj); err != nil {
+				return nil, errors.Wrapf(err, "failed to update CRD %s", obj.GetName())
 			}
 		}
 	}
@@ -109,6 +115,10 @@ func parseChartCRDs(crds *[]unstructured.Unstructured, crdDir string) error {
 			return err
 		}
 
+		if len(b) == 0 {
+			return nil
+		}
+
 		reader := k8syaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
 		doc, err := reader.Read()
 		if err != nil {
@@ -117,11 +127,19 @@ func parseChartCRDs(crds *[]unstructured.Unstructured, crdDir string) error {
 
 		crd := unstructured.Unstructured{}
 
-		if err = yaml.Unmarshal(doc, &crd); err != nil {
-			return err
+		dec := deser.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+
+		_, gvk, err := dec.Decode(doc, nil, &crd)
+		if err != nil {
+			return nil
+		}
+
+		if gvk.Kind != "CustomResourceDefinition" {
+			return nil
 		}
 
 		*crds = append(*crds, crd)
+
 		return nil
 	})
 
