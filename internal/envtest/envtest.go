@@ -12,6 +12,8 @@ import (
 	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
 
 	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -76,6 +78,10 @@ func (e *Environment) start() {
 		panic(err)
 	}
 
+	if err := apiextensions.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
+
 	//+kubebuilder:scaffold:scheme
 
 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
@@ -100,4 +106,8 @@ func (e *Environment) CreateNamespace(t *testing.T) string {
 	}
 
 	return namespace
+}
+
+func (e *Environment) RestConfig() *rest.Config {
+	return e.env.Config
 }
