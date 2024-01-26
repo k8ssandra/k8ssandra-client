@@ -77,9 +77,6 @@ func DownloadChartRelease(repoName, repoURL, chartName, targetVersion string) (s
 		return "", err
 	}
 
-	// TODO We can't do removeAll here..
-	// defer os.RemoveAll(dir)
-
 	// _ is ProvenanceVerify (TODO we might want to verify the release)
 	saved, _, err := c.DownloadTo(url, targetVersion, dir)
 	if err != nil {
@@ -89,13 +86,15 @@ func DownloadChartRelease(repoName, repoURL, chartName, targetVersion string) (s
 	return saved, nil
 }
 
-func ExtractChartRelease(saved, targetVersion string) (string, error) {
-	// TODO We need saved for the install process, clip from here to another function..
-
+func ExtractChartRelease(saved, chartName, targetVersion string) (string, error) {
 	// Extract the files
-	subDir := filepath.Join("helm", targetVersion)
+	subDir := filepath.Join(chartName, targetVersion)
 	extractDir, err := util.GetCacheDir(subDir)
 	if err != nil {
+		return "", err
+	}
+
+	if _, err := util.CreateIfNotExistsDir(extractDir); err != nil {
 		return "", err
 	}
 
@@ -106,6 +105,16 @@ func ExtractChartRelease(saved, targetVersion string) (string, error) {
 	}
 
 	return extractDir, nil
+}
+
+func GetChartTargetDir(chartName, targetVersion string) (string, error) {
+	subDir := filepath.Join(chartName, targetVersion)
+	extractDir, err := util.GetCacheDir(subDir)
+	if err != nil {
+		return "", err
+	}
+
+	return extractDir, err
 }
 
 func Release(cfg *action.Configuration, releaseName string) (*release.Release, error) {

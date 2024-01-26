@@ -9,7 +9,7 @@ const (
 	dirSuffix = "k8ssandra"
 )
 
-// GetCacheDir returns the caching directory for k8ssandra and creates it if it does not exists
+// GetCacheDir returns the caching directory for module
 func GetCacheDir(module string) (string, error) {
 	userCacheDir, err := os.UserCacheDir()
 	if err != nil {
@@ -17,7 +17,7 @@ func GetCacheDir(module string) (string, error) {
 	}
 
 	targetDir := filepath.Join(userCacheDir, dirSuffix, module)
-	return createIfNotExistsDir(targetDir)
+	return targetDir, nil
 }
 
 // GetConfigDir returns the config directory for k8ssandra and creates it if it does not exists
@@ -28,10 +28,10 @@ func GetConfigDir(module string) (string, error) {
 	}
 
 	targetDir := filepath.Join(userConfigDir, dirSuffix, module)
-	return createIfNotExistsDir(targetDir)
+	return CreateIfNotExistsDir(targetDir)
 }
 
-func createIfNotExistsDir(targetDir string) (string, error) {
+func CreateIfNotExistsDir(targetDir string) (string, error) {
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(targetDir, 0755); err != nil {
 			return "", err
