@@ -13,11 +13,11 @@ on:
             repoName:
                 description: 'Name of the Helm repository if not default'
                 required: false
-                type: boolean
+                type: string
             repoURL:
                 description: 'URL of the target repository if repoName is set'
                 required: false
-                type: boolean
+                type: string
 jobs:
     create_the_image:
       runs-on: ubuntu-latest
@@ -26,9 +26,16 @@ jobs:
           uses: actions/checkout@v3
         - name: Set up Docker Buildx
           uses: docker/setup-buildx-action@v2
+        - uses: azure/setup-helm@v3
+          if: ${{ env.ACT }}
+          with:
+             version: '3.13.1'
+          id: install
         - name: Set up QEMU
-          uses: docker/setup-qemu-action@v2
+          if: ${{ !env.ACT }}
+          uses: docker/setup-qemu-action@v2  
         - name: Login to DockerHub
+          if: ${{ !env.ACT }}
           uses: docker/login-action@v2
           with:
             username: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -45,16 +52,16 @@ jobs:
             helm pull ${{ inputs.repoName }}/${{ inputs.chartName }} --version ${{ inputs.targetVersion }}
             mkdir -p build/${{ inputs.repoName }}
             tar -xvf ${{ inputs.chartName }}-${{ inputs.targetVersion }}.tgz -C build/${{ inputs.repoName }}
-        # TODO Add docker tags to indicate which tag/SHA this release was based on for easier debugging
         - name: Build and push
           id: docker_build
           uses: docker/build-push-action@v3
           with:
             load: false
             file: cmd/kubectl-k8ssandra/Dockerfile
-            push: ${{ github.event_name != 'pull_request' }}
+            push: ${{ github.event_name != 'pull_request' && !env.ACT }}
             tags: k8ssandra/k8ssandra-client:${{ steps.vars.outputs.tag }}
             platforms: linux/amd64,linux/arm64
+            context: .
             cache-from: type=local,src=/tmp/.buildx-cache
             cache-to: type=local,dest=/tmp/.buildx-cache
     

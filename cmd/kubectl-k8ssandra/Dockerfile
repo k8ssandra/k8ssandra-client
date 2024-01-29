@@ -15,8 +15,8 @@ COPY cmd/ cmd/
 COPY pkg/ pkg/
 
 # Copy the cached helm charts
-RUN mkdir -p /workspace/.cache/
-COPY build/ /workspace/.cache/
+RUN mkdir -p build/
+COPY build/ build/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o kubectl-k8ssandra cmd/kubectl-k8ssandra/main.go
@@ -36,7 +36,7 @@ LABEL description="Part of the toolset for the DataStax Kubernetes Operator for 
 
 WORKDIR /
 COPY --from=builder /workspace/kubectl-k8ssandra .
-COPY --from=builder --chown=65532:65532 /workspace/.cache/ .cache/
+COPY --from=builder --chown=65532:65532 /workspace/build/ .cache/
 COPY ./LICENSE /licenses/
 
 USER 65532:65532

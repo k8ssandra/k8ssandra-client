@@ -57,6 +57,7 @@ jobs:
         run: |
           echo ::set-output name=sha_short::$(git rev-parse --short=8 ${{ github.sha }})
           echo ::set-output name=tag_name::${GITHUB_REF#refs/tags/}
+          mkdir -p build/
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v3
@@ -66,5 +67,6 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: k8ssandra/k8ssandra-client:${{ steps.vars.outputs.sha_short }}
           platforms: linux/amd64,linux/arm64
+          context: .
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
