@@ -18,10 +18,6 @@ on:
                 description: 'URL of the target repository if repoName is set'
                 required: false
                 type: boolean
-                environment:
-                description: 'Environment to run tests against'
-                type: environment
-                required: true
 jobs:
     create_the_image:
       runs-on: ubuntu-latest
@@ -41,8 +37,6 @@ jobs:
           id: vars
           run: |
             echo "tag=${{ inputs.chartName }}-${{ inputs.targetVersion }}" >> $GITHUB_OUTPUT
-            echo ::set-output name=sha_short::$(git rev-parse --short=8 ${{ github.sha }})
-            echo ::set-output name=tag_name::${GITHUB_REF#refs/tags/}
         - name: Download the requested charts
           id: download_charts
           run: |
@@ -51,8 +45,7 @@ jobs:
             helm pull ${{ inputs.repoName }}/${{ inputs.chartName }} --version ${{ inputs.targetVersion }}
             mkdir -p build/${{ inputs.repoName }}
             tar -xvf ${{ inputs.chartName }}-${{ inputs.targetVersion }}.tgz -C build/${{ inputs.repoName }}
-        # TODO (here or some script / go file): - copy the releaseName + subcharts and build a image with a tag value that "chart-version"
-        # that information comes from a workflow_dispatch from another repo
+        # TODO Add docker tags to indicate which tag/SHA this release was based on for easier debugging
         - name: Build and push
           id: docker_build
           uses: docker/build-push-action@v3
