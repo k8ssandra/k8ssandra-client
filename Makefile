@@ -58,6 +58,7 @@ build: test ## Build kubectl-k8ssandra
 
 .PHONY: docker-build
 docker-build: ## Build k8ssandra-client docker image
+	mkdir -p build/
 	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG} . --load -f cmd/kubectl-k8ssandra/Dockerfile
 
 .PHONY: kind-load

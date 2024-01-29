@@ -1,0 +1,67 @@
+name: k8ssandra-client build for external calls
+on:
+    workflow_dispatch:
+        inputs:
+            chartName:
+                description: 'Name of the chart to be embedded in the image'
+                required: true
+                type: string
+            targetVersion:
+                description: 'Target version to upgrade CRDs to'
+                required: true
+                type: string
+            repoName:
+                description: 'Name of the Helm repository if not default'
+                required: false
+                type: boolean
+            repoURL:
+                description: 'URL of the target repository if repoName is set'
+                required: false
+                type: boolean
+                environment:
+                description: 'Environment to run tests against'
+                type: environment
+                required: true
+jobs:
+    create_the_image:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Check out code into the Go module directory
+          uses: actions/checkout@v3
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v2
+        - name: Set up QEMU
+          uses: docker/setup-qemu-action@v2
+        - name: Login to DockerHub
+          uses: docker/login-action@v2
+          with:
+            username: ${{ secrets.DOCKER_HUB_USERNAME }}
+            password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+        - name: Create release name
+          id: vars
+          run: |
+            echo "tag=${{ inputs.chartName }}-${{ inputs.targetVersion }}" >> $GITHUB_OUTPUT
+            echo ::set-output name=sha_short::$(git rev-parse --short=8 ${{ github.sha }})
+            echo ::set-output name=tag_name::${GITHUB_REF#refs/tags/}
+        - name: Download the requested charts
+          id: download_charts
+          run: |
+            helm repo add ${{ inputs.repoName }} ${{ inputs.repoURL }}
+            helm repo update
+            helm pull ${{ inputs.repoName }}/${{ inputs.chartName }} --version ${{ inputs.targetVersion }}
+            mkdir -p build/${{ inputs.repoName }}
+            tar -xvf ${{ inputs.chartName }}-${{ inputs.targetVersion }}.tgz -C build/${{ inputs.repoName }}
+        # TODO (here or some script / go file): - copy the releaseName + subcharts and build a image with a tag value that "chart-version"
+        # that information comes from a workflow_dispatch from another repo
+        - name: Build and push
+          id: docker_build
+          uses: docker/build-push-action@v3
+          with:
+            load: false
+            file: cmd/kubectl-k8ssandra/Dockerfile
+            push: ${{ github.event_name != 'pull_request' }}
+            tags: k8ssandra/k8ssandra-client:${{ steps.vars.outputs.tag }}
+            platforms: linux/amd64,linux/arm64
+            cache-from: type=local,src=/tmp/.buildx-cache
+            cache-to: type=local,dest=/tmp/.buildx-cache
+    

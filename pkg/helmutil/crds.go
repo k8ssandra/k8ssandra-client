@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,7 +38,7 @@ func NewUpgrader(c client.Client, repoName, repoURL, chartName string) (*Upgrade
 
 // Upgrade installs the missing CRDs or updates them if they exists already
 func (u *Upgrader) Upgrade(ctx context.Context, targetVersion string) ([]unstructured.Unstructured, error) {
-	chartDir, err := GetChartTargetDir(u.chartName, targetVersion)
+	chartDir, err := GetChartTargetDir(u.chartName)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +54,8 @@ func (u *Upgrader) Upgrade(ctx context.Context, targetVersion string) ([]unstruc
 			return nil, err
 		}
 		chartDir = extractDir
+	} else {
+		fmt.Printf("Using cached chart release from %s\n", chartDir)
 	}
 
 	// defer os.RemoveAll(downloadDir)

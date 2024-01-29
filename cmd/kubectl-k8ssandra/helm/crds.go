@@ -29,6 +29,7 @@ type options struct {
 	targetVersion string
 	chartRepo     string
 	repoURL       string
+	download      bool
 }
 
 func newOptions(streams genericclioptions.IOStreams) *options {
@@ -67,6 +68,7 @@ func NewUpgradeCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	fl.StringVar(&o.targetVersion, "targetVersion", "", "targetVersion to upgrade to")
 	fl.StringVar(&o.chartRepo, "chartRepo", "", "optional chart repository name to override the default (k8ssandra)")
 	fl.StringVar(&o.repoURL, "repoURL", "", "optional chart repository url to override the default (helm.k8ssandra.io)")
+	fl.BoolVar(&o.download, "download", false, "only download the chart")
 	o.configFlags.AddFlags(fl)
 
 	return cmd
@@ -75,7 +77,7 @@ func NewUpgradeCmd(streams genericclioptions.IOStreams) *cobra.Command {
 // Complete parses the arguments and necessary flags to options
 func (c *options) Complete(cmd *cobra.Command, args []string) error {
 	var err error
-	if len(args) < 2 {
+	if c.chartName == "" && c.targetVersion == "" {
 		return errNotEnoughParameters
 	}
 
@@ -87,7 +89,6 @@ func (c *options) Complete(cmd *cobra.Command, args []string) error {
 		c.chartRepo = helmutil.K8ssandraRepoName
 	}
 
-	c.targetVersion = args[0]
 	c.namespace, _, err = c.configFlags.ToRawKubeConfigLoader().Namespace()
 	return err
 }
@@ -105,9 +106,12 @@ func (c *options) Run() error {
 		return err
 	}
 
-	kubeClient, err := kubernetes.GetClientInNamespace(restConfig, c.namespace)
-	if err != nil {
-		return err
+	var kubeClient kubernetes.NamespacedClient
+	if !c.download {
+		kubeClient, err = kubernetes.GetClientInNamespace(restConfig, c.namespace)
+		if err != nil {
+			return err
+		}
 	}
 
 	ctx := context.Background()

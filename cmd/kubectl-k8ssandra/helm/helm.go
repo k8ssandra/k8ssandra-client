@@ -23,7 +23,7 @@ func NewHelmCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewHelmOptions(streams)
 
 	cmd := &cobra.Command{
-		Use: "k8ssandra [subcommand] [flags]",
+		Use: "helm [subcommand] [flags]",
 	}
 
 	// Add subcommands

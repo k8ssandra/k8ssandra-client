@@ -107,8 +107,8 @@ func ExtractChartRelease(saved, chartName, targetVersion string) (string, error)
 	return extractDir, nil
 }
 
-func GetChartTargetDir(chartName, targetVersion string) (string, error) {
-	subDir := filepath.Join(chartName, targetVersion)
+func GetChartTargetDir(chartName string) (string, error) {
+	subDir := filepath.Join(chartName)
 	extractDir, err := util.GetCacheDir(subDir)
 	if err != nil {
 		return "", err
