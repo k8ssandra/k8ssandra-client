@@ -7,7 +7,7 @@ on:
                 required: true
                 type: string
             targetVersion:
-                description: 'Target version to upgrade CRDs to'
+                description: 'Target version to upgrade CRDs to. If used with git, give the tag name'
                 required: true
                 type: string
             repoName:
@@ -18,9 +18,23 @@ on:
                 description: 'URL of the target repository if repoName is set'
                 required: false
                 type: string
+            gitRepo:
+                description: 'git repository to be embedded in the image'
+                required: false
+                type: string
+            chartDir:
+                description: 'Directory of the chart in the git repository to be embedded in the image'
+                required: false
+                type: string
+            tokenSecret:
+                description: 'Secret name to be used as GitHub token if gitRepo is set'
+                required: false
+                type: string
 jobs:
     create_the_image:
       runs-on: ubuntu-latest
+      env:
+        GH_TOKEN: ${{ secrets[format('{0}', inputs.tokenSecret)] }}
       steps:
         - name: Check out code into the Go module directory
           uses: actions/checkout@v3
@@ -45,6 +59,7 @@ jobs:
           run: |
             echo "tag=${{ inputs.chartName }}-${{ inputs.targetVersion }}" >> $GITHUB_OUTPUT
         - name: Download the requested charts
+          if: ${{ inputs.repoName }}
           id: download_charts
           run: |
             helm repo add ${{ inputs.repoName }} ${{ inputs.repoURL }}
@@ -52,6 +67,17 @@ jobs:
             helm pull ${{ inputs.repoName }}/${{ inputs.chartName }} --version ${{ inputs.targetVersion }}
             mkdir -p build/${{ inputs.repoName }}
             tar -xvf ${{ inputs.chartName }}-${{ inputs.targetVersion }}.tgz -C build/${{ inputs.repoName }}
+        - name: Download the requested chart from another repository
+          if: ${{ !inputs.repoName }}
+          id: download_charts_github
+          run: |
+            gh repo clone ${{ inputs.gitRepo }} ${{ inputs.repoName }}
+            cd ${{ inputs.repoName }}
+            git checkout ${{ inputs.targetVersion }}
+            cd ..
+            mkdir -p build/${{ inputs.repoName }}
+            cp -R ${{ inputs.repoName }}/${{ inputs.chartDir }}/* build/${{ inputs.repoName }}
+            helm dependency update build/${{ inputs.repoName }}
         - name: Build and push
           id: docker_build
           uses: docker/build-push-action@v3
