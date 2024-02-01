@@ -6,7 +6,7 @@ on:
                 description: 'Name of the chart to be embedded in the image'
                 required: true
                 type: string
-            targetVersion:
+            chartVersion:
                 description: 'Target version to upgrade CRDs to. If used with git, give the tag name'
                 required: true
                 type: string
@@ -57,23 +57,23 @@ jobs:
         - name: Create release name
           id: vars
           run: |
-            echo "tag=${{ inputs.chartName }}-${{ inputs.targetVersion }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ inputs.chartName }}-${{ inputs.chartVersion }}" >> $GITHUB_OUTPUT
         - name: Download the requested charts
           if: ${{ inputs.repoName }}
           id: download_charts
           run: |
             helm repo add ${{ inputs.repoName }} ${{ inputs.repoURL }}
             helm repo update
-            helm pull ${{ inputs.repoName }}/${{ inputs.chartName }} --version ${{ inputs.targetVersion }}
+            helm pull ${{ inputs.repoName }}/${{ inputs.chartName }} --version ${{ inputs.chartVersion }}
             mkdir -p build/${{ inputs.repoName }}
-            tar -xvf ${{ inputs.chartName }}-${{ inputs.targetVersion }}.tgz -C build/${{ inputs.repoName }}
+            tar -xvf ${{ inputs.chartName }}-${{ inputs.chartVersion }}.tgz -C build/${{ inputs.repoName }}
         - name: Download the requested chart from another repository
           if: ${{ !inputs.repoName }}
           id: download_charts_github
           run: |
             gh repo clone ${{ inputs.gitRepo }} ${{ inputs.repoName }}
             cd ${{ inputs.repoName }}
-            git checkout ${{ inputs.targetVersion }}
+            git checkout ${{ inputs.chartVersion }}
             cd ..
             mkdir -p build/${{ inputs.repoName }}
             cp -R ${{ inputs.repoName }}/${{ inputs.chartDir }}/* build/${{ inputs.repoName }}

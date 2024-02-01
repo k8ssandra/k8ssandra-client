@@ -12,24 +12,24 @@ import (
 
 var (
 	upgraderExample = `
-	# update CRDs in the namespace to targetVersion
-	%[1]s crds --chartName <chartName> --targetVersion <targetVersion> [<args>]
+	# update CRDs in the namespace to chartVersion
+	%[1]s upgrade --chartName <chartName> --chartVersion <chartVersion> [<args>]
 
-	# update CRDs in the namespace to targetVersion with non-default chartRepo (helm.k8ssandra.io)
-	%[1]s crds --chartName <chartName> --targetVersion <targetVersion> --chartRepo <repository> [<args>]
+	# update CRDs in the namespace to chartVersion with non-default chartRepo (helm.k8ssandra.io)
+	%[1]s upgrade --chartName <chartName> --chartVersion <chartVersion> --chartRepo <repository> [<args>]
 	`
-	errNotEnoughParameters = fmt.Errorf("not enough parameters, requires chartName and targetVersion")
+	errNotEnoughParameters = fmt.Errorf("not enough parameters, requires chartName and chartVersion")
 )
 
 type options struct {
 	configFlags *genericclioptions.ConfigFlags
 	genericclioptions.IOStreams
-	namespace     string
-	chartName     string
-	targetVersion string
-	chartRepo     string
-	repoURL       string
-	download      bool
+	namespace    string
+	chartName    string
+	chartVersion string
+	chartRepo    string
+	repoURL      string
+	download     bool
 }
 
 func newOptions(streams genericclioptions.IOStreams) *options {
@@ -44,8 +44,8 @@ func NewUpgradeCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	o := newOptions(streams)
 
 	cmd := &cobra.Command{
-		Use:          "upgrade <targetVersion> [flags]",
-		Short:        "upgrade k8ssandra CRDs to target release version",
+		Use:          "upgrade [flags]",
+		Short:        "upgrade CRDs from chart to target version",
 		Example:      fmt.Sprintf(upgraderExample, "kubectl k8ssandra helm crds"),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
@@ -65,7 +65,7 @@ func NewUpgradeCmd(streams genericclioptions.IOStreams) *cobra.Command {
 
 	fl := cmd.Flags()
 	fl.StringVar(&o.chartName, "chartName", "", "chartName to upgrade")
-	fl.StringVar(&o.targetVersion, "targetVersion", "", "targetVersion to upgrade to")
+	fl.StringVar(&o.chartVersion, "chartVersion", "", "chartVersion to upgrade to")
 	fl.StringVar(&o.chartRepo, "chartRepo", "", "optional chart repository name to override the default (k8ssandra)")
 	fl.StringVar(&o.repoURL, "repoURL", "", "optional chart repository url to override the default (helm.k8ssandra.io)")
 	fl.BoolVar(&o.download, "download", false, "only download the chart")
@@ -77,7 +77,7 @@ func NewUpgradeCmd(streams genericclioptions.IOStreams) *cobra.Command {
 // Complete parses the arguments and necessary flags to options
 func (c *options) Complete(cmd *cobra.Command, args []string) error {
 	var err error
-	if c.chartName == "" && c.targetVersion == "" {
+	if c.chartName == "" && c.chartVersion == "" {
 		return errNotEnoughParameters
 	}
 
@@ -95,7 +95,7 @@ func (c *options) Complete(cmd *cobra.Command, args []string) error {
 
 // Validate ensures that all required arguments and flag values are provided
 func (c *options) Validate() error {
-	// TODO Validate that the targetVersion is valid
+	// TODO Validate that the chartVersion is valid
 	return nil
 }
 
@@ -121,6 +121,6 @@ func (c *options) Run() error {
 		return err
 	}
 
-	_, err = upgrader.Upgrade(ctx, c.targetVersion)
+	_, err = upgrader.Upgrade(ctx, c.chartVersion)
 	return err
 }

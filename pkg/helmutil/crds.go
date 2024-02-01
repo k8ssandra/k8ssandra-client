@@ -37,19 +37,19 @@ func NewUpgrader(c client.Client, repoName, repoURL, chartName string) (*Upgrade
 }
 
 // Upgrade installs the missing CRDs or updates them if they exists already
-func (u *Upgrader) Upgrade(ctx context.Context, targetVersion string) ([]unstructured.Unstructured, error) {
+func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstructured.Unstructured, error) {
 	chartDir, err := GetChartTargetDir(u.chartName)
 	if err != nil {
 		return nil, err
 	}
 
 	if _, err := os.Stat(chartDir); os.IsNotExist(err) {
-		downloadDir, err := DownloadChartRelease(u.repoName, u.repoURL, u.chartName, targetVersion)
+		downloadDir, err := DownloadChartRelease(u.repoName, u.repoURL, u.chartName, chartVersion)
 		if err != nil {
 			return nil, err
 		}
 
-		extractDir, err := ExtractChartRelease(downloadDir, u.chartName, targetVersion)
+		extractDir, err := ExtractChartRelease(downloadDir, u.chartName, chartVersion)
 		if err != nil {
 			return nil, err
 		}
