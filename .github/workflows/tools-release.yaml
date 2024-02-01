@@ -59,7 +59,7 @@ jobs:
           run: |
             echo "tag=${{ inputs.chartName }}-${{ inputs.chartVersion }}" >> $GITHUB_OUTPUT
         - name: Download the requested charts
-          if: ${{ inputs.repoName }}
+          if: ${{ !inputs.gitRepo }}
           id: download_charts
           run: |
             helm repo add ${{ inputs.repoName }} ${{ inputs.repoURL }}
@@ -68,7 +68,7 @@ jobs:
             mkdir -p build/${{ inputs.repoName }}
             tar -xvf ${{ inputs.chartName }}-${{ inputs.chartVersion }}.tgz -C build/${{ inputs.repoName }}
         - name: Download the requested chart from another repository
-          if: ${{ !inputs.repoName }}
+          if: ${{ inputs.gitRepo }}
           id: download_charts_github
           run: |
             gh repo clone ${{ inputs.gitRepo }} ${{ inputs.repoName }}
