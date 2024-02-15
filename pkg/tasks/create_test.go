@@ -375,17 +375,3 @@ func TestCreateClusterWideTask(t *testing.T) {
 	assert.Equal(t, controlapi.CommandRestart, task.Spec.Template.Jobs[0].Command)
 	assert.Equal(t, 0, len(task.Spec.Datacenters))
 }
-
-func TestDcNames(t *testing.T) {
-	t.Run("empty string", func(t *testing.T) {
-		result := tasks.DcNames("")
-		assert.Equal(t, 0, len(result))
-	})
-
-	t.Run("non-empty string", func(t *testing.T) {
-		dcName := "test-dc"
-		result := tasks.DcNames(dcName)
-		assert.Equal(t, 1, len(result))
-		assert.Equal(t, dcName, result[0])
-	})
-}

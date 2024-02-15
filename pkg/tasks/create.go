@@ -29,7 +29,7 @@ func restartArguments(rackName string) *controlapi.JobArguments {
 
 func CreateClusterRestartTask(ctx context.Context, kubeClient client.Client, namespace, cluster, dcName, rackName string) (*k8ssandrataskapi.K8ssandraTask, error) {
 	args := restartArguments(rackName)
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandRestart, namespace, cluster, DcNames(dcName), args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandRestart, namespace, cluster, []string{dcName}, args)
 }
 
 // Replace
@@ -56,7 +56,7 @@ func CreateClusterReplaceTask(ctx context.Context, kubeClient client.Client, nam
 		return nil, err
 	}
 
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandReplaceNode, namespace, cluster, DcNames(dcName), args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandReplaceNode, namespace, cluster, []string{dcName}, args)
 }
 
 // Flush
@@ -68,7 +68,7 @@ func CreateFlushTask(ctx context.Context, kubeClient client.Client, dc *cassdcap
 
 func CreateClusterFlushTask(ctx context.Context, kubeClient client.Client, namespace, cluster, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
 	args := commonArguments(rackName, podName)
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandFlush, namespace, cluster, DcNames(dcName), args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandFlush, namespace, cluster, []string{dcName}, args)
 }
 
 // Cleanup
@@ -80,7 +80,7 @@ func CreateCleanupTask(ctx context.Context, kubeClient client.Client, dc *cassdc
 
 func CreateClusterCleanupTask(ctx context.Context, kubeClient client.Client, namespace, cluster, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
 	args := commonArguments(rackName, podName)
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandCleanup, namespace, cluster, DcNames(dcName), args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandCleanup, namespace, cluster, []string{dcName}, args)
 }
 
 // UpgradeSSTables
@@ -92,7 +92,7 @@ func CreateUpgradeSSTablesTask(ctx context.Context, kubeClient client.Client, dc
 
 func CreateClusterUpgradeSSTablesTask(ctx context.Context, kubeClient client.Client, namespace, cluster, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
 	args := commonArguments(rackName, podName)
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandUpgradeSSTables, namespace, cluster, DcNames(dcName), args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandUpgradeSSTables, namespace, cluster, []string{dcName}, args)
 }
 
 // Scrub
@@ -104,7 +104,7 @@ func CreateScrubTask(ctx context.Context, kubeClient client.Client, dc *cassdcap
 
 func CreateClusterScrubTask(ctx context.Context, kubeClient client.Client, namespace, cluster, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
 	args := commonArguments(rackName, podName)
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandScrub, namespace, cluster, DcNames(dcName), args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandScrub, namespace, cluster, []string{dcName}, args)
 }
 
 // Compaction
@@ -137,7 +137,7 @@ func CreateClusterCompactionTask(ctx context.Context, kubeClient client.Client, 
 	if err != nil {
 		return nil, err
 	}
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandCompaction, namespace, cluster, DcNames(dcName), args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandCompaction, namespace, cluster, []string{dcName}, args)
 }
 
 // Move
@@ -151,7 +151,7 @@ func CreateGCTask(ctx context.Context, kubeClient client.Client, dc *cassdcapi.C
 
 func CreateClusterGCTask(ctx context.Context, kubeClient client.Client, namespace, cluster, dcName, rackName, podName string) (*k8ssandrataskapi.K8ssandraTask, error) {
 	args := commonArguments(rackName, podName)
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandGarbageCollect, namespace, cluster, DcNames(dcName), args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandGarbageCollect, namespace, cluster, []string{dcName}, args)
 }
 
 // Rebuild
@@ -179,7 +179,7 @@ func CreateClusterRebuildTask(ctx context.Context, kubeClient client.Client, nam
 	if err != nil {
 		return nil, err
 	}
-	return CreateClusterTask(ctx, kubeClient, controlapi.CommandRebuild, namespace, cluster, DcNames(dcName), args)
+	return CreateClusterTask(ctx, kubeClient, controlapi.CommandRebuild, namespace, cluster, []string{dcName}, args)
 }
 
 // Assistance methods
@@ -221,12 +221,4 @@ func CreateTask(ctx context.Context, kubeClient client.Client, command controlap
 	}
 
 	return task, nil
-}
-
-func DcNames(dcName string) []string {
-	var dcNames []string
-	if dcName != "" {
-		dcNames = []string{dcName}
-	}
-	return dcNames
 }

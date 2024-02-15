@@ -36,7 +36,7 @@ func CreateClusterTask(ctx context.Context, kubeClient client.Client, command co
 		},
 	}
 
-	if len(datacenters) > 0 {
+	if len(datacenters) > 0 && datacenters[0] != "" {
 		task.Spec.Datacenters = datacenters
 	}
 
