@@ -66,7 +66,7 @@ func UpgradeValues(cfg *action.Configuration, chartDir, chartName, releaseName s
 	return u.Run(releaseName, ch, values)
 }
 
-func MergeValuesFile(cfg *action.Configuration, settings *cli.EnvSettings, chartDir, targetVersion, chartName, releaseName string) (*os.File, error) {
+func MergeValuesFile(cfg *action.Configuration, settings *cli.EnvSettings, chartDir, chartVersion, chartName, releaseName string) (*os.File, error) {
 	// Create temp file with merged default values.yaml (with comments) and helm modified values
 	// If there were changes, upgrade Helm release with the new overridden settings
 

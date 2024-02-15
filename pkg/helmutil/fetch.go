@@ -18,7 +18,7 @@ import (
 )
 
 // DownloadChartRelease fetches the k8ssandra target version and extracts it to a directory which path is returned
-func DownloadChartRelease(repoName, repoURL, chartName, targetVersion string) (string, error) {
+func DownloadChartRelease(repoName, repoURL, chartName, chartVersion string) (string, error) {
 	// Unfortunately, the helm's chart pull command uses "internal" marked structs, so it can't be used for
 	// pulling the data. Thus, we need to replicate the implementation here and use our own cache
 	settings := cli.New()
@@ -61,7 +61,7 @@ func DownloadChartRelease(repoName, repoURL, chartName, targetVersion string) (s
 	}
 
 	// chart name, chart version
-	cv, err := repoIndex.Get(chartName, targetVersion)
+	cv, err := repoIndex.Get(chartName, chartVersion)
 	if err != nil {
 		return "", err
 	}
@@ -78,7 +78,7 @@ func DownloadChartRelease(repoName, repoURL, chartName, targetVersion string) (s
 	}
 
 	// _ is ProvenanceVerify (TODO we might want to verify the release)
-	saved, _, err := c.DownloadTo(url, targetVersion, dir)
+	saved, _, err := c.DownloadTo(url, chartVersion, dir)
 	if err != nil {
 		return "", err
 	}
@@ -86,9 +86,9 @@ func DownloadChartRelease(repoName, repoURL, chartName, targetVersion string) (s
 	return saved, nil
 }
 
-func ExtractChartRelease(saved, chartName, targetVersion string) (string, error) {
+func ExtractChartRelease(saved, chartName, chartVersion string) (string, error) {
 	// Extract the files
-	subDir := filepath.Join(chartName, targetVersion)
+	subDir := filepath.Join(chartName, chartVersion)
 	extractDir, err := util.GetCacheDir(subDir)
 	if err != nil {
 		return "", err
@@ -107,8 +107,8 @@ func ExtractChartRelease(saved, chartName, targetVersion string) (string, error)
 	return extractDir, nil
 }
 
-func GetChartTargetDir(chartName, targetVersion string) (string, error) {
-	subDir := filepath.Join(chartName, targetVersion)
+func GetChartTargetDir(chartName string) (string, error) {
+	subDir := filepath.Join(chartName)
 	extractDir, err := util.GetCacheDir(subDir)
 	if err != nil {
 		return "", err
@@ -152,6 +152,6 @@ func Uninstall(cfg *action.Configuration, releaseName string) (*release.Uninstal
 }
 
 // ValuesYaml fetches the chartVersion's values.yaml file for editing purposes
-func ValuesYaml(targetVersion string) (io.Reader, error) {
+func ValuesYaml(chartVersion string) (io.Reader, error) {
 	return nil, nil
 }
