@@ -359,3 +359,19 @@ func TestCreateTaskLongName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
 }
+
+func TestCreateClusterWideTask(t *testing.T) {
+	namespace := env.CreateNamespace(t)
+	kubeClient := env.Client(namespace)
+
+	cluster := "test-cluster"
+	dcName := ""
+	rackName := "rack1"
+
+	task, err := tasks.CreateClusterRestartTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, task)
+	assert.Equal(t, controlapi.CommandRestart, task.Spec.Template.Jobs[0].Command)
+	assert.Equal(t, 0, len(task.Spec.Datacenters))
+}
