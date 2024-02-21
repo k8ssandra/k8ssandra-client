@@ -5,29 +5,25 @@ import (
 	"path/filepath"
 )
 
-const (
-	dirSuffix = "k8ssandra"
-)
-
 // GetCacheDir returns the caching directory for module
-func GetCacheDir(module string) (string, error) {
+func GetCacheDir(repo, chart string) (string, error) {
 	userCacheDir, err := os.UserCacheDir()
 	if err != nil {
 		return "", err
 	}
 
-	targetDir := filepath.Join(userCacheDir, dirSuffix, module)
+	targetDir := filepath.Join(userCacheDir, repo, chart)
 	return targetDir, nil
 }
 
 // GetConfigDir returns the config directory for k8ssandra and creates it if it does not exists
-func GetConfigDir(module string) (string, error) {
+func GetConfigDir(repo, chart string) (string, error) {
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
 
-	targetDir := filepath.Join(userConfigDir, dirSuffix, module)
+	targetDir := filepath.Join(userConfigDir, repo, chart)
 	return CreateIfNotExistsDir(targetDir)
 }
 

@@ -86,10 +86,10 @@ func DownloadChartRelease(repoName, repoURL, chartName, chartVersion string) (st
 	return saved, nil
 }
 
-func ExtractChartRelease(saved, chartName, chartVersion string) (string, error) {
+func ExtractChartRelease(saved, repoName, chartName, chartVersion string) (string, error) {
 	// Extract the files
 	subDir := filepath.Join(chartName, chartVersion)
-	extractDir, err := util.GetCacheDir(subDir)
+	extractDir, err := util.GetCacheDir(repoName, subDir)
 	if err != nil {
 		return "", err
 	}
@@ -107,9 +107,8 @@ func ExtractChartRelease(saved, chartName, chartVersion string) (string, error) 
 	return extractDir, nil
 }
 
-func GetChartTargetDir(chartName string) (string, error) {
-	subDir := filepath.Join(chartName)
-	extractDir, err := util.GetCacheDir(subDir)
+func GetChartTargetDir(repoName, chartName string) (string, error) {
+	extractDir, err := util.GetCacheDir(repoName, chartName)
 	if err != nil {
 		return "", err
 	}
