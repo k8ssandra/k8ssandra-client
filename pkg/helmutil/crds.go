@@ -38,7 +38,7 @@ func NewUpgrader(c client.Client, repoName, repoURL, chartName string) (*Upgrade
 
 // Upgrade installs the missing CRDs or updates them if they exists already
 func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstructured.Unstructured, error) {
-	chartDir, err := GetChartTargetDir(u.chartName)
+	chartDir, err := GetChartTargetDir(u.repoName, u.chartName)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstruct
 			return nil, err
 		}
 
-		extractDir, err := ExtractChartRelease(downloadDir, u.chartName, chartVersion)
+		extractDir, err := ExtractChartRelease(downloadDir, u.repoName, u.chartName, chartVersion)
 		if err != nil {
 			return nil, err
 		}

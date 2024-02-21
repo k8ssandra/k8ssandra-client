@@ -21,7 +21,7 @@ func TestUpgradingCRDs(t *testing.T) {
 	for _, chartName := range chartNames {
 		namespace := env.CreateNamespace(t)
 		kubeClient := env.Client(namespace)
-		require.NoError(cleanCache(chartName))
+		require.NoError(cleanCache("k8ssandra", chartName))
 
 		// creating new upgrader
 		u, err := helmutil.NewUpgrader(kubeClient, helmutil.K8ssandraRepoName, helmutil.StableK8ssandraRepoURL, chartName)
@@ -55,7 +55,7 @@ func TestUpgradingCRDs(t *testing.T) {
 		require.False(strings.HasPrefix(descRunsAsCassandra, "DEPRECATED"))
 
 		// Upgrading to 0.46.1
-		require.NoError(cleanCache(chartName))
+		require.NoError(cleanCache("k8ssandra", chartName))
 		_, err = u.Upgrade(context.TODO(), "0.46.1")
 		require.NoError(err)
 
@@ -73,8 +73,8 @@ func TestUpgradingCRDs(t *testing.T) {
 	}
 }
 
-func cleanCache(chartName string) error {
-	chartDir, err := helmutil.GetChartTargetDir(chartName)
+func cleanCache(repoName, chartName string) error {
+	chartDir, err := helmutil.GetChartTargetDir(repoName, chartName)
 	if err != nil {
 		return err
 	}

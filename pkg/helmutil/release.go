@@ -86,7 +86,7 @@ func MergeValuesFile(cfg *action.Configuration, settings *cli.EnvSettings, chart
 
 	defer file.Close()
 
-	cacheDir, err := util.GetCacheDir("helm")
+	cacheDir, err := util.GetCacheDir("helm", "values")
 	if err != nil {
 		return nil, err
 	}
