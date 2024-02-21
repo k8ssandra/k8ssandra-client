@@ -62,7 +62,11 @@ jobs:
           if: ${{ !inputs.gitRepo }}
           id: download_charts
           run: |
-            helm repo add ${{ inputs.repoName }} ${{ inputs.repoURL }}
+            if [ -z "${{ inputs.tokenSecret }}" ]; then
+              helm repo add ${{ inputs.repoName }} ${{ inputs.repoURL }}
+            else
+              helm repo add ${{ inputs.repoName }} ${{ inputs.repoURL }}  --username "${{ env.GH_TOKEN }}" --password "${{ env.GH_TOKEN }}"
+            fi
             helm repo update
             helm pull ${{ inputs.repoName }}/${{ inputs.chartName }} --version ${{ inputs.chartVersion }}
             mkdir -p build/${{ inputs.repoName }}
