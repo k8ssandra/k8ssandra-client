@@ -364,8 +364,8 @@ github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
-github.com/k8ssandra/cass-operator v1.17.3-0.20231020160518-5189bebc9531 h1:plGB8EBK8jEpbphiCkmNJNktjZwrTRlA2WzBTxEY9pU=
-github.com/k8ssandra/cass-operator v1.17.3-0.20231020160518-5189bebc9531/go.mod h1:8gYoASfrQYiDmvfMAeYSe31dO1qVe8uIISJeVXGFSiI=
+github.com/k8ssandra/cass-operator v1.19.0 h1:k+/IdbAowA8J5pV/YNy5mCqTn+I0ultdEJJYNSMP6NE=
+github.com/k8ssandra/cass-operator v1.19.0/go.mod h1:T25Qz8sj/R5JrjG9Wpo3/83o5MEw4pb/c8eiGqdnVcI=
 github.com/karrick/godirwalk v1.16.1 h1:DynhcF+bztK8gooS0+NDJFrdNZjJ3gzVzC545UNA9iw=
 github.com/karrick/godirwalk v1.16.1/go.mod h1:j4mkqPuvaLI8mp1DroR3P6ad7cyYd4c1qeJ3RV7ULlk=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=

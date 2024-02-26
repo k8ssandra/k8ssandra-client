@@ -13,7 +13,7 @@ import (
 
 func AddNewUsersFromSecret(ctx context.Context, c kubernetes.NamespacedClient, datacenter string, secretPath string, superusers bool) error {
 	// Create ManagementClient
-	mgmtClient, err := mgmtapi.NewManagementClient(ctx, c)
+	mgmtClient, err := mgmtapi.NewManagementClient(ctx, c, c.Namespace, datacenter)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func targetPod(ctx context.Context, c kubernetes.NamespacedClient, datacenter st
 }
 
 func AddNewUser(ctx context.Context, c kubernetes.NamespacedClient, datacenter string, username string, password string, superuser bool) error {
-	mgmtClient, err := mgmtapi.NewManagementClient(ctx, c)
+	mgmtClient, err := mgmtapi.NewManagementClient(ctx, c, c.Namespace, datacenter)
 	if err != nil {
 		return err
 	}

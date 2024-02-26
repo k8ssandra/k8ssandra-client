@@ -9,14 +9,16 @@ require (
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/google/uuid v1.3.0
-	github.com/k8ssandra/cass-operator v1.17.3-0.20231020160518-5189bebc9531
+	github.com/k8ssandra/cass-operator v1.19.0
 	github.com/k8ssandra/k8ssandra-operator v1.9.2
+	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.9.4
 	k8s.io/api v0.26.4
+	k8s.io/apiextensions-apiserver v0.26.4
 	k8s.io/apimachinery v0.26.4
 	k8s.io/cli-runtime v0.26.4
 	k8s.io/client-go v0.26.4
@@ -112,7 +114,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.15.1 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
@@ -145,7 +146,6 @@ require (
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.26.4 // indirect
 	k8s.io/apiserver v0.26.4 // indirect
 	k8s.io/component-base v0.26.4 // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect

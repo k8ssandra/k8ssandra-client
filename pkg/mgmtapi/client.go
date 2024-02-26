@@ -4,27 +4,18 @@ import (
 	"context"
 
 	"github.com/k8ssandra/cass-operator/pkg/httphelper"
+	"github.com/k8ssandra/k8ssandra-client/pkg/cassdcutil"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // NewManagementClient returns a new instance for management-api go-client
-func NewManagementClient(ctx context.Context, client client.Client) (httphelper.NodeMgmtClient, error) {
-	logger := log.FromContext(ctx)
-
-	// We don't support authentication yet, so always use insecure
-	provider := &httphelper.InsecureManagementApiSecurityProvider{}
-	protocol := provider.GetProtocol()
-
-	httpClient, err := provider.BuildHttpClient(client, ctx)
+func NewManagementClient(ctx context.Context, client client.Client, namespace, datacenter string) (httphelper.NodeMgmtClient, error) {
+	manager := cassdcutil.NewManager(client)
+	dc, err := manager.CassandraDatacenter(ctx, namespace, datacenter)
 	if err != nil {
-		logger.Error(err, "error in BuildManagementApiHttpClient")
 		return httphelper.NodeMgmtClient{}, err
 	}
 
-	return httphelper.NodeMgmtClient{
-		Client:   httpClient,
-		Log:      logger,
-		Protocol: protocol,
-	}, nil
+	return httphelper.NewMgmtClient(ctx, client, dc)
 }
