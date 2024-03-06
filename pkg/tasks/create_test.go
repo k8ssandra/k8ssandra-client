@@ -2,6 +2,7 @@ package tasks_test
 
 import (
 	"context"
+	batchv1 "k8s.io/api/batch/v1"
 	"testing"
 
 	cassdcapi "github.com/k8ssandra/cass-operator/apis/cassandra/v1beta1"
@@ -34,11 +35,13 @@ func TestCreateClusterRestartTask(t *testing.T) {
 	dcName := "test-dc"
 	rackName := "rack1"
 
-	task, err := tasks.CreateClusterRestartTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName)
+	task, err := tasks.CreateClusterRestartTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, batchv1.ForbidConcurrent, batchv1.AllowConcurrent)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
 	assert.Equal(t, controlapi.CommandRestart, task.Spec.Template.Jobs[0].Command)
+	assert.Equal(t, batchv1.ForbidConcurrent, task.Spec.DcConcurrencyPolicy)
+	assert.Equal(t, batchv1.AllowConcurrent, task.Spec.Template.ConcurrencyPolicy)
 }
 
 func TestCreateReplaceTask(t *testing.T) {
@@ -67,13 +70,13 @@ func TestCreateClusterReplaceTask(t *testing.T) {
 	dcName := "test-dc"
 	podName := "pod1"
 
-	task, err := tasks.CreateClusterReplaceTask(context.Background(), kubeClient, namespace, cluster, dcName, podName)
+	task, err := tasks.CreateClusterReplaceTask(context.Background(), kubeClient, namespace, cluster, dcName, podName, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
 	assert.Equal(t, controlapi.CommandReplaceNode, task.Spec.Template.Jobs[0].Command)
 
-	_, err = tasks.CreateClusterReplaceTask(context.Background(), kubeClient, namespace, cluster, dcName, "")
+	_, err = tasks.CreateClusterReplaceTask(context.Background(), kubeClient, namespace, cluster, dcName, "", "", "")
 	assert.Error(t, err)
 }
 
@@ -102,7 +105,7 @@ func TestCreateClusterFlushTask(t *testing.T) {
 	rackName := "rack1"
 	podName := "pod1"
 
-	task, err := tasks.CreateClusterFlushTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName)
+	task, err := tasks.CreateClusterFlushTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
@@ -134,7 +137,7 @@ func TestCreateClusterCleanupTask(t *testing.T) {
 	rackName := "rack1"
 	podName := "pod1"
 
-	task, err := tasks.CreateClusterCleanupTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName)
+	task, err := tasks.CreateClusterCleanupTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
@@ -166,7 +169,7 @@ func TestCreateClusterUpgradeSSTablesTask(t *testing.T) {
 	rackName := "rack1"
 	podName := "pod1"
 
-	task, err := tasks.CreateClusterUpgradeSSTablesTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName)
+	task, err := tasks.CreateClusterUpgradeSSTablesTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
@@ -198,7 +201,7 @@ func TestCreateClusterScrubTask(t *testing.T) {
 	rackName := "rack1"
 	podName := "pod1"
 
-	task, err := tasks.CreateClusterScrubTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName)
+	task, err := tasks.CreateClusterScrubTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
@@ -244,14 +247,14 @@ func TestCreateClusterCompactionTask(t *testing.T) {
 	keyspaceName := "test-keyspace"
 	tables := []string{"table1", "table2"}
 
-	task, err := tasks.CreateClusterCompactionTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, keyspaceName, tables)
+	task, err := tasks.CreateClusterCompactionTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, keyspaceName, tables, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
 	assert.Equal(t, controlapi.CommandCompaction, task.Spec.Template.Jobs[0].Command)
 
 	// Only cluster is really required
-	task, err = tasks.CreateClusterCompactionTask(context.Background(), kubeClient, namespace, cluster, "", "", "", "", nil)
+	task, err = tasks.CreateClusterCompactionTask(context.Background(), kubeClient, namespace, cluster, "", "", "", "", nil, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
@@ -282,7 +285,7 @@ func TestCreateClusterGCTask(t *testing.T) {
 	rackName := "rack1"
 	podName := "pod1"
 
-	task, err := tasks.CreateClusterGCTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName)
+	task, err := tasks.CreateClusterGCTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
@@ -320,13 +323,13 @@ func TestCreateClusterRebuildTask(t *testing.T) {
 	podName := "pod1"
 	sourceDatacenter := "dc1"
 
-	task, err := tasks.CreateClusterRebuildTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, sourceDatacenter)
+	task, err := tasks.CreateClusterRebuildTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, sourceDatacenter, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
 	assert.Equal(t, controlapi.CommandRebuild, task.Spec.Template.Jobs[0].Command)
 
-	_, err = tasks.CreateClusterRebuildTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, "")
+	_, err = tasks.CreateClusterRebuildTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, podName, "", "", "")
 	assert.Error(t, err)
 }
 
@@ -368,7 +371,7 @@ func TestCreateClusterWideTask(t *testing.T) {
 	dcName := ""
 	rackName := "rack1"
 
-	task, err := tasks.CreateClusterRestartTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName)
+	task, err := tasks.CreateClusterRestartTask(context.Background(), kubeClient, namespace, cluster, dcName, rackName, "", "")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, task)

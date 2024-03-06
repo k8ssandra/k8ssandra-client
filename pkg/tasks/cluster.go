@@ -6,12 +6,13 @@ import (
 
 	controlapi "github.com/k8ssandra/cass-operator/apis/control/v1alpha1"
 	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func CreateClusterTask(ctx context.Context, kubeClient client.Client, command controlapi.CassandraCommand, namespace, kcName string, datacenters []string, args *controlapi.JobArguments) (*k8ssandrataskapi.K8ssandraTask, error) {
+func CreateClusterTask(ctx context.Context, kubeClient client.Client, command controlapi.CassandraCommand, namespace, kcName string, datacenters []string, args *controlapi.JobArguments, dcConcurrencyPolicy, taskConcurrencyPolicy batchv1.ConcurrencyPolicy) (*k8ssandrataskapi.K8ssandraTask, error) {
 	if kcName == "" || namespace == "" {
 		return nil, fmt.Errorf("clusterName and namespace must be specified")
 	}
@@ -26,7 +27,9 @@ func CreateClusterTask(ctx context.Context, kubeClient client.Client, command co
 				Name:      kcName,
 				Namespace: namespace,
 			},
+			DcConcurrencyPolicy: dcConcurrencyPolicy,
 			Template: controlapi.CassandraTaskTemplate{
+				ConcurrencyPolicy: taskConcurrencyPolicy,
 				Jobs: []controlapi.CassandraJob{
 					{
 						Command: command,
