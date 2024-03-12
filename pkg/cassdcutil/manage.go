@@ -60,28 +60,26 @@ func (c *CassManager) ModifyStoppedState(ctx context.Context, name, namespace st
 
 	if wait {
 		if stop {
-			err = waitutil.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
+			if err := waitutil.PollUntilContextTimeout(ctx, 10*time.Second, 10*time.Minute, true, func(context.Context) (bool, error) {
 				return c.RefreshStatus(ctx, cassdc, cassdcapi.DatacenterStopped, corev1.ConditionTrue)
-			})
-			if err != nil {
+			}); err != nil {
 				return err
 			}
 
 			// And wait for it to finish..
-			return waitutil.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
+			return waitutil.PollUntilContextTimeout(ctx, 10*time.Second, 10*time.Minute, true, func(context.Context) (bool, error) {
 				return c.RefreshStatus(ctx, cassdc, cassdcapi.DatacenterReady, corev1.ConditionFalse)
 			})
 		}
 
-		err = waitutil.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
+		if err := waitutil.PollUntilContextTimeout(ctx, 10*time.Second, 10*time.Minute, true, func(context.Context) (bool, error) {
 			return c.RefreshStatus(ctx, cassdc, cassdcapi.DatacenterStopped, corev1.ConditionFalse)
-		})
-		if err != nil {
+		}); err != nil {
 			return err
 		}
 
 		// And wait for it to finish..
-		return waitutil.PollImmediate(10*time.Second, 10*time.Minute, func() (bool, error) {
+		return waitutil.PollUntilContextTimeout(ctx, 10*time.Second, 10*time.Minute, true, func(context.Context) (bool, error) {
 			return c.RefreshStatus(ctx, cassdc, cassdcapi.DatacenterReady, corev1.ConditionTrue)
 		})
 	}

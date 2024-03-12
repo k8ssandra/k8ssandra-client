@@ -18,7 +18,7 @@ func WaitForCompletion(ctx context.Context, kubeClient client.Client, task *cont
 }
 
 func WaitForCompletionKey(ctx context.Context, kubeClient client.Client, taskKey types.NamespacedName) error {
-	err := waitutil.PollImmediate(5*time.Second, 10*time.Minute, func() (done bool, err error) {
+	err := waitutil.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
 		task := &controlapi.CassandraTask{}
 		if err := kubeClient.Get(ctx, taskKey, task); err != nil {
 			return false, err
