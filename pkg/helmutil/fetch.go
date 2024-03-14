@@ -18,7 +18,7 @@ import (
 )
 
 // DownloadChartRelease fetches the k8ssandra target version and extracts it to a directory which path is returned
-func DownloadChartRelease(repoName, repoURL, chartName, chartVersion string) (string, error) {
+func DownloadChartRelease(repoName, repoURL, chartName, chartVersion string, options ...getter.Option) (string, error) {
 	// Unfortunately, the helm's chart pull command uses "internal" marked structs, so it can't be used for
 	// pulling the data. Thus, we need to replicate the implementation here and use our own cache
 	settings := cli.New()
@@ -37,6 +37,8 @@ func DownloadChartRelease(repoName, repoURL, chartName, chartVersion string) (st
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
 	}
+
+	c.Options = append(c.Options, options...)
 
 	// helm repo add k8ssandra https://helm.k8ssandra.io/
 	r, err := repo.NewChartRepository(&repo.Entry{
