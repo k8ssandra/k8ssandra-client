@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/k8ssandra/k8ssandra-client/pkg/util"
 	"helm.sh/helm/v3/pkg/action"
@@ -129,13 +130,16 @@ func ListInstallations(cfg *action.Configuration) ([]*release.Release, error) {
 	return listAction.Run()
 }
 
-func Install(cfg *action.Configuration, releaseName, path, namespace string, values map[string]interface{}, devel bool, skipCRDs bool) (*release.Release, error) {
+func Install(cfg *action.Configuration, releaseName, path, namespace string, values map[string]interface{}, devel bool, skipCRDs bool, timeout time.Duration) (*release.Release, error) {
 	installAction := action.NewInstall(cfg)
 	installAction.ReleaseName = releaseName
 	installAction.Namespace = namespace
 	installAction.CreateNamespace = true
 	installAction.Atomic = true
 	installAction.Wait = true
+	if timeout > 0 {
+		installAction.Timeout = timeout
+	}
 	if skipCRDs {
 		installAction.SkipCRDs = true
 	}
