@@ -134,6 +134,8 @@ func Install(cfg *action.Configuration, releaseName, path, namespace string, val
 	installAction.ReleaseName = releaseName
 	installAction.Namespace = namespace
 	installAction.CreateNamespace = true
+	installAction.Atomic = true
+	installAction.Wait = true
 	if skipCRDs {
 		installAction.SkipCRDs = true
 	}
