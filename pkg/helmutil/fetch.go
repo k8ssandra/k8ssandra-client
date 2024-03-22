@@ -129,12 +129,14 @@ func ListInstallations(cfg *action.Configuration) ([]*release.Release, error) {
 	return listAction.Run()
 }
 
-func Install(cfg *action.Configuration, releaseName, path, namespace string, values map[string]interface{}, devel bool) (*release.Release, error) {
+func Install(cfg *action.Configuration, releaseName, path, namespace string, values map[string]interface{}, devel bool, skipCRDs bool) (*release.Release, error) {
 	installAction := action.NewInstall(cfg)
 	installAction.ReleaseName = releaseName
 	installAction.Namespace = namespace
 	installAction.CreateNamespace = true
-	installAction.IncludeCRDs = true
+	if skipCRDs {
+		installAction.SkipCRDs = true
+	}
 	if devel {
 		installAction.Devel = true
 		installAction.Version = ">0.0.0.0"
