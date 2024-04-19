@@ -38,6 +38,7 @@ func NewUpgrader(c client.Client, repoName, repoURL, chartName string) (*Upgrade
 
 // Upgrade installs the missing CRDs or updates them if they exists already
 func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstructured.Unstructured, error) {
+	log.SetLevel(log.DebugLevel)
 	log.Info("Processing request to upgrade project CustomResourceDefinitions", "repoName", u.repoName, "chartName", u.chartName, "chartVersion", chartVersion)
 	chartDir, err := GetChartTargetDir(u.repoName, u.chartName)
 	if err != nil {
