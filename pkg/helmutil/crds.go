@@ -117,6 +117,7 @@ func findCRDDirs(chartDir string) ([]string, error) {
 func parseChartCRDs(crds *[]unstructured.Unstructured, crdDir string) error {
 	errOuter := filepath.Walk(crdDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			log.Error("Error parsing CustomResourceDefinition directory", "path", path, "error", err)
 			return err
 		}
 
@@ -128,16 +129,19 @@ func parseChartCRDs(crds *[]unstructured.Unstructured, crdDir string) error {
 		log.Debug("Parsing CustomResourceDefinition file", "path", path)
 		b, err := os.ReadFile(path)
 		if err != nil {
+			log.Error("Failed to read CustomResourceDefinition file", "path", path, "error", err)
 			return err
 		}
 
 		if len(b) == 0 {
+			log.Warn("Empty CustomResourceDefinition file", "path", path)
 			return nil
 		}
 
 		reader := k8syaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
 		doc, err := reader.Read()
 		if err != nil {
+			log.Error("Failed to parse YAML CustomResourceDefinition file", "path", path, "error", err)
 			return err
 		}
 
