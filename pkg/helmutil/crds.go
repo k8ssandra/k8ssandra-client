@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -138,32 +139,52 @@ func parseChartCRDs(crds *[]unstructured.Unstructured, crdDir string) error {
 			return nil
 		}
 
-		reader := k8syaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
-		doc, err := reader.Read()
+		docs, err := parseCRDYamls(b)
 		if err != nil {
 			log.Error("Failed to parse YAML CustomResourceDefinition file", "path", path, "error", err)
 			return err
 		}
-
-		crd := unstructured.Unstructured{}
-
 		dec := deser.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
-		_, gvk, err := dec.Decode(doc, nil, &crd)
-		if err != nil {
-			log.Error("Failed to decode CustomResourceDefinition", "path", path, "error", err)
-			return nil
+		for _, b := range docs {
+			crd := unstructured.Unstructured{}
+
+			_, gvk, err := dec.Decode(b, nil, &crd)
+			if err != nil {
+				log.Error("Failed to decode CustomResourceDefinition", "path", path, "error", err)
+				continue
+			}
+
+			if gvk.Kind != "CustomResourceDefinition" {
+				log.Error("File is not a CustomResourceDefinition", "path", path, "kind", gvk.Kind)
+				continue
+			}
+
+			*crds = append(*crds, crd)
 		}
 
-		if gvk.Kind != "CustomResourceDefinition" {
-			log.Error("File is not a CustomResourceDefinition", "path", path, "kind", gvk.Kind)
-			return nil
-		}
-
-		*crds = append(*crds, crd)
-
-		return nil
+		return err
 	})
 
 	return errOuter
+}
+
+func parseCRDYamls(b []byte) ([][]byte, error) {
+	docs := [][]byte{}
+	reader := k8syaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
+	for {
+		// Read document
+		doc, err := reader.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+
+			return nil, err
+		}
+
+		docs = append(docs, doc)
+	}
+
+	return docs, nil
 }
