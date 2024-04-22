@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -46,7 +47,7 @@ func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstruct
 		return nil, err
 	}
 
-	if _, err := os.Stat(chartDir); os.IsNotExist(err) {
+	if fs, err := os.Stat(chartDir); os.IsNotExist(err) {
 		log.Info("Downloading chart release from remote repository", "repoURL", u.repoURL, "chartName", u.chartName, "chartVersion", chartVersion)
 		downloadDir, err := DownloadChartRelease(u.repoName, u.repoURL, u.chartName, chartVersion)
 		if err != nil {
@@ -58,6 +59,13 @@ func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstruct
 			return nil, err
 		}
 		chartDir = extractDir
+	} else if err != nil {
+		log.Error("Failed to check chart release directory", "error", err)
+		return nil, err
+	} else if !fs.IsDir() {
+		err := fmt.Errorf("chart release is not a directory: %s", chartDir)
+		log.Error("Target chart release path is not a directory", "directory", chartDir, "error", err)
+		return nil, err
 	} else {
 		log.Info("Using cached chart release", "directory", chartDir)
 	}
