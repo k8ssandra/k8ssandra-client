@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/charmbracelet/log"
 	"github.com/k8ssandra/k8ssandra-client/pkg/helmutil"
 	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
 	"github.com/spf13/cobra"
@@ -56,6 +57,7 @@ func NewUpgradeCmd(streams genericclioptions.IOStreams) *cobra.Command {
 				return err
 			}
 			if err := o.Run(); err != nil {
+				log.Error("Error upgrading CustomResourceDefinitions", "error", err)
 				return err
 			}
 
