@@ -11,6 +11,7 @@ import (
 	configapi "github.com/k8ssandra/k8ssandra-operator/apis/config/v1beta1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -19,10 +20,27 @@ import (
 
 func TestRegister(t *testing.T) {
 	require := require.New(t)
-	client1 := (*multiEnv)[0].GetClientInNamespace("source-namespace")
-	client2 := (*multiEnv)[1].GetClientInNamespace("dest-namespace")
-	require.NoError(client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}))
-	require.NoError(client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}))
+	client1, _ := client.New((*multiEnv)[0].RestConfig(), client.Options{})
+	client2, _ := client.New((*multiEnv)[1].RestConfig(), client.Options{})
+	ctx := context.Background()
+	require.Eventually(func() bool {
+		// It seems that at first, these clients may not be ready for use. By the time they can create a namespace they are known ready.
+		err1 := client1.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}})
+		if err1 != nil {
+			t.Log(err1)
+			if k8serrors.IsAlreadyExists(err1) {
+				err1 = nil
+			}
+		}
+		err2 := client2.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}})
+		if err2 != nil {
+			t.Log(err2)
+			if k8serrors.IsAlreadyExists(err2) {
+				err2 = nil
+			}
+		}
+		return err1 == nil && err2 == nil
+	}, time.Second*60, time.Second*5)
 
 	testDir, err := os.MkdirTemp("", "k8ssandra-operator-test-****")
 	require.NoError(err)
@@ -59,7 +77,7 @@ func TestRegister(t *testing.T) {
 		SourceNamespace:  "source-namespace",
 		DestNamespace:    "dest-namespace",
 		ServiceAccount:   "k8ssandra-operator",
-		Context:          context.TODO(),
+		Context:          ctx,
 		DestinationName:  "test-destination",
 	}
 	ctx := context.Background()

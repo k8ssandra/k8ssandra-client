@@ -12,8 +12,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	// metrics.DefaultBindAddress = "0" This no longer appears to exist...
-	os.Exit(envtest.RunMulti(m, func(e *envtest.MultiK8sEnvironment) {
+	os.Exit(envtest.RunMultiKind(m, func(e *envtest.MultiK8sEnvironment) {
 		multiEnv = e
-	}, 2))
+	}, []int{1, 1}))
 }
