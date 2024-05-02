@@ -20,7 +20,7 @@ func TestUpgradingCRDs(t *testing.T) {
 	chartNames := []string{"cass-operator"}
 	for _, chartName := range chartNames {
 		namespace := env.CreateNamespace(t)
-		kubeClient := env.Client(namespace)
+		kubeClient := env.GetClientInNamespace(namespace)
 		require.NoError(cleanCache("k8ssandra", chartName))
 
 		// creating new upgrader

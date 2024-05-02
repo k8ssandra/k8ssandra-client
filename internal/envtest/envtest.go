@@ -3,17 +3,18 @@ package envtest
 import (
 	"context"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
 	cassdcapi "github.com/k8ssandra/cass-operator/apis/cassandra/v1beta1"
 	controlapi "github.com/k8ssandra/cass-operator/apis/control/v1alpha1"
-	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
-
 	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
-	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,48 +22,64 @@ import (
 )
 
 func Run(m *testing.M, setupFunc func(e *Environment)) (code int) {
-	env := NewEnvironment()
-	env.start()
+	ctx := ctrl.SetupSignalHandler()
+	env := NewEnvironment(ctx)
+	env.Start()
 	setupFunc(env)
 	exitCode := m.Run()
-	env.stop()
+	env.Stop()
 	return exitCode
 }
 
 type Environment struct {
-	intClient     client.Client
+	client        client.Client
 	env           *envtest.Environment
 	cancelManager context.CancelFunc
 	Context       context.Context
 }
 
-func NewEnvironment() *Environment {
+func NewEnvironment(ctx context.Context) *Environment {
 	env := &Environment{}
 	env.env = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join(RootDir(), "testfiles", "crd")},
+		CRDDirectoryPaths: []string{
+			filepath.Join(RootDir(), "testfiles", "crd"),
+		},
 		ErrorIfCRDPathMissing: true,
 	}
-
-	ctx := ctrl.SetupSignalHandler()
 	ctx, cancel := context.WithCancel(ctx)
 	env.Context = ctx
 	env.cancelManager = cancel
 	return env
 }
 
-// https://stackoverflow.com/questions/31873396/is-it-possible-to-get-the-current-root-of-package-structure-as-a-string-in-golan
-func RootDir() string {
-	_, b, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(b), "../..")
+func (e *Environment) GetClientInNamespace(namespace string) client.Client {
+	c, err := kubernetes.GetClientInNamespace(e.env.Config, namespace)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
 
-func (e *Environment) Client(namespace string) client.Client {
-	return client.NewNamespacedClient(e.intClient, namespace)
+func (e *Environment) RestConfig() *rest.Config {
+	return e.env.Config
 }
 
-func (e *Environment) start() {
+func (e *Environment) RawClient() client.Client {
+	return e.client
+}
+
+func (e *Environment) Start() {
 	cfg, err := e.env.Start()
 	if err != nil {
+		panic(err)
+	}
+
+	k8sClient, err := kubernetes.GetClient(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := cassdcapi.AddToScheme(k8sClient.Scheme()); err != nil {
 		panic(err)
 	}
 
@@ -84,15 +101,14 @@ func (e *Environment) start() {
 
 	//+kubebuilder:scaffold:scheme
 
-	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
-	if err != nil {
-		panic(err)
-	}
-
-	e.intClient = k8sClient
+	e.client = k8sClient
+	// e.Kubeconfig, err = CreateKubeconfigFileForRestConfig(e.env.Config)
+	// if err != nil {
+	// 	panic(err)
+	// }
 }
 
-func (e *Environment) stop() {
+func (e *Environment) Stop() {
 	e.cancelManager()
 	if err := e.env.Stop(); err != nil {
 		panic(err)
@@ -101,13 +117,45 @@ func (e *Environment) stop() {
 
 func (e *Environment) CreateNamespace(t *testing.T) string {
 	namespace := strings.ToLower(t.Name())
-	if err := kubernetes.CreateNamespaceIfNotExists(e.intClient, namespace); err != nil {
+	if err := kubernetes.CreateNamespaceIfNotExists(e.client, namespace); err != nil {
 		t.FailNow()
 	}
 
 	return namespace
 }
 
-func (e *Environment) RestConfig() *rest.Config {
-	return e.env.Config
+func (e *Environment) GetKubeconfig() ([]byte, error) {
+	clientConfig, err := CreateKubeconfigFileForRestConfig(e.env.Config)
+	if err != nil {
+		return nil, err
+	}
+	return clientcmd.Write(clientConfig)
+}
+
+func CreateKubeconfigFileForRestConfig(restConfig *rest.Config) (clientcmdapi.Config, error) {
+	clusters := make(map[string]*clientcmdapi.Cluster)
+	clusters["default-cluster"] = &clientcmdapi.Cluster{
+		Server:                   restConfig.Host,
+		CertificateAuthorityData: restConfig.CAData,
+	}
+	contexts := make(map[string]*clientcmdapi.Context)
+	contexts["default-context"] = &clientcmdapi.Context{
+		Cluster:  "default-cluster",
+		AuthInfo: "default-user",
+	}
+	authinfos := make(map[string]*clientcmdapi.AuthInfo)
+	authinfos["default-user"] = &clientcmdapi.AuthInfo{
+		ClientCertificateData: restConfig.CertData,
+		ClientKeyData:         restConfig.KeyData,
+	}
+	clientConfig := clientcmdapi.Config{
+		Kind:           "Config",
+		APIVersion:     "v1",
+		Clusters:       clusters,
+		Contexts:       contexts,
+		CurrentContext: "default-context",
+		AuthInfos:      authinfos,
+	}
+
+	return clientConfig, nil
 }
