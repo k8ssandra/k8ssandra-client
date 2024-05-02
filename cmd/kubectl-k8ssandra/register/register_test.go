@@ -19,14 +19,14 @@ import (
 
 func TestRegister(t *testing.T) {
 	require.New(t)
-	client1 := (*multiEnv)[0].GetClient("mission-control")
-	client2 := (*multiEnv)[1].GetClient("mission-control")
+	client1 := (*multiEnv)[0].GetClient("k8ssandra-operator")
+	client2 := (*multiEnv)[1].GetClient("k8ssandra-operator")
 
-	if err := client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "mission-control"}}); err != nil {
+	if err := client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "mission-control"}}); err != nil {
+	if err := client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -77,7 +77,9 @@ func TestRegister(t *testing.T) {
 		DestKubeconfig:   buildDir + "/kubeconfig2",
 		SourceContext:    "default-context",
 		DestContext:      "default-context",
-		ServiceAccount:   "mission-control",
+		SourceNamespace:  "source-namespace",
+		DestNamespace:    "dest-namespace",
+		ServiceAccount:   "k8ssandra-operator",
 		Context:          context.TODO(),
 		DestinationName:  "test-destination",
 	}
@@ -90,7 +92,7 @@ func TestRegister(t *testing.T) {
 			return true
 		case res.IsError():
 			t.Log(res.GetError())
-			if res.GetError().Error() == "no secret found for service account mission-control" {
+			if res.GetError().Error() == "no secret found for service account k8ssandra-operator" {
 				return true
 			}
 		}
@@ -100,7 +102,7 @@ func TestRegister(t *testing.T) {
 	// This relies on a controller that is not running in the envtest.
 
 	desiredSaSecret := &corev1.Secret{}
-	require.NoError(t, client1.Get(context.Background(), client.ObjectKey{Name: "mission-control-secret", Namespace: "mission-control"}, desiredSaSecret))
+	require.NoError(t, client1.Get(context.Background(), client.ObjectKey{Name: "k8ssandra-operator-secret", Namespace: "source-namespace"}, desiredSaSecret))
 	patch := client.MergeFrom(desiredSaSecret.DeepCopy())
 	desiredSaSecret.Data = map[string][]byte{
 		"token":  []byte("test-token"),
@@ -111,13 +113,13 @@ func TestRegister(t *testing.T) {
 	desiredSa := &corev1.ServiceAccount{}
 	require.NoError(t, client1.Get(
 		context.Background(),
-		client.ObjectKey{Name: "mission-control", Namespace: "mission-control"},
+		client.ObjectKey{Name: "k8ssandra-operator", Namespace: "source-namespace"},
 		desiredSa))
 
 	patch = client.MergeFrom(desiredSa.DeepCopy())
 	desiredSa.Secrets = []corev1.ObjectReference{
 		{
-			Name: "mission-control-secret",
+			Name: "k8ssandra-operator-secret",
 		},
 	}
 	require.NoError(t, client1.Patch(ctx, desiredSa, patch))
@@ -142,14 +144,14 @@ func TestRegister(t *testing.T) {
 	destSecret := &corev1.Secret{}
 	require.Eventually(t, func() bool {
 		err = client2.Get(ctx,
-			client.ObjectKey{Name: "test-destination", Namespace: "mission-control"}, destSecret)
+			client.ObjectKey{Name: "test-destination", Namespace: "dest-namespace"}, destSecret)
 		if err != nil {
 			t.Log("didn't find dest secret")
 			return false
 		}
 		clientConfig := &configapi.ClientConfig{}
 		err = client2.Get(ctx,
-			client.ObjectKey{Name: "test-destination", Namespace: "mission-control"}, clientConfig)
+			client.ObjectKey{Name: "test-destination", Namespace: "dest-namespace"}, clientConfig)
 		if err != nil {
 			t.Log("didn't find dest client config")
 			return false

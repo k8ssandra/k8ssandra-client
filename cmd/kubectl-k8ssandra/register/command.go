@@ -7,10 +7,6 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-var (
-	StaticNamespace = "mission-control"
-)
-
 var RegisterClusterCmd = &cobra.Command{
 	Use:   "register [flags]",
 	Short: "register a data plane into the control plane.",
@@ -27,8 +23,10 @@ func Init(cmd *cobra.Command, streams genericclioptions.IOStreams) {
 		"path to destination cluster's kubeconfig file - defaults to KUBECONFIG then ~/.kube/config")
 	RegisterClusterCmd.Flags().String("source-context", "", "context name for source cluster")
 	RegisterClusterCmd.Flags().String("dest-context", "", "context name for destination cluster")
-	RegisterClusterCmd.Flags().String("serviceaccount-name", "mission-control", "serviceaccount name for destination cluster")
-	RegisterClusterCmd.Flags().String("destination-name", "remote-mission-control", "name for remote clientConfig and secret on destination cluster")
+	RegisterClusterCmd.Flags().String("source-namespace", "", "namespace containing service account for source cluster")
+	RegisterClusterCmd.Flags().String("dest-namespace", "", "namespace where secret and clientConfig will be created on destination cluster")
+	RegisterClusterCmd.Flags().String("serviceaccount-name", "k8ssandra-operator", "serviceaccount name for destination cluster")
+	RegisterClusterCmd.Flags().String("destination-name", "remote-k8ssandra-operator", "name for remote clientConfig and secret on destination cluster")
 	cmd.AddCommand(RegisterClusterCmd)
 }
 
@@ -57,6 +55,8 @@ func NewRegistrationExecutorFromRegisterClusterCmd(cmd cobra.Command) *Registrat
 		DestKubeconfig:   cmd.Flag("dest-kubeconfig").Value.String(),
 		SourceContext:    cmd.Flag("source-context").Value.String(),
 		DestContext:      cmd.Flag("dest-context").Value.String(),
+		SourceNamespace:  cmd.Flag("source-namespace").Value.String(),
+		DestNamespace:    cmd.Flag("dest-namespace").Value.String(),
 		ServiceAccount:   cmd.Flag("serviceaccount-name").Value.String(),
 		Context:          cmd.Context(),
 		DestinationName:  cmd.Flag("destination-name").Value.String(),

@@ -21,15 +21,17 @@ type RegistrationExecutor struct {
 	DestKubeconfig   string
 	SourceContext    string
 	DestContext      string
+	SourceNamespace  string
+	DestNamespace    string
 	ServiceAccount   string
 	Context          context.Context
 }
 
-func getDefaultSecret(saName string) *corev1.Secret {
+func getDefaultSecret(saName, saNamespace string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      saName + "-secret",
-			Namespace: StaticNamespace,
+			Namespace: saNamespace,
 			Annotations: map[string]string{
 				"kubernetes.io/service-account.name": saName,
 			},
@@ -37,11 +39,11 @@ func getDefaultSecret(saName string) *corev1.Secret {
 		Type: corev1.SecretTypeServiceAccountToken,
 	}
 }
-func getDefaultServiceAccount(saName string) *corev1.ServiceAccount {
+func getDefaultServiceAccount(saName, saNamespace string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      saName,
-			Namespace: StaticNamespace,
+			Namespace: saNamespace,
 		},
 	}
 
@@ -62,15 +64,15 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 	}
 	// Get ServiceAccount
 	serviceAccount := &corev1.ServiceAccount{}
-	if err := srcClient.Get(e.Context, client.ObjectKey{Name: e.ServiceAccount, Namespace: StaticNamespace}, serviceAccount); err != nil {
-		if err := srcClient.Create(e.Context, getDefaultServiceAccount(e.ServiceAccount)); err != nil {
+	if err := srcClient.Get(e.Context, client.ObjectKey{Name: e.ServiceAccount, Namespace: e.SourceNamespace}, serviceAccount); err != nil {
+		if err := srcClient.Create(e.Context, getDefaultServiceAccount(e.ServiceAccount, e.SourceNamespace)); err != nil {
 			return result.Error(err)
 		}
 		return result.Error(err)
 	}
 	// Get a secret in this namespace which holds the service account token
 	secretsList := &corev1.SecretList{}
-	if err := srcClient.List(e.Context, secretsList, client.InNamespace(StaticNamespace)); err != nil {
+	if err := srcClient.List(e.Context, secretsList, client.InNamespace(e.SourceNamespace)); err != nil {
 		return result.Error(err)
 	}
 	var secret *corev1.Secret
@@ -81,7 +83,7 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 		}
 	}
 	if secret == nil {
-		secret = getDefaultSecret(e.ServiceAccount)
+		secret = getDefaultSecret(e.ServiceAccount, e.SourceNamespace)
 		if err := srcClient.Create(e.Context, secret); err != nil {
 			return result.Error(err)
 		}
@@ -104,7 +106,7 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 	destSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      e.DestinationName,
-			Namespace: StaticNamespace,
+			Namespace: e.DestNamespace,
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
@@ -122,7 +124,7 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 	destClientConfig := configapi.ClientConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      e.DestinationName,
-			Namespace: StaticNamespace,
+			Namespace: e.DestNamespace,
 		},
 		Spec: configapi.ClientConfigSpec{
 			KubeConfigSecret: corev1.LocalObjectReference{
