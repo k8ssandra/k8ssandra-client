@@ -19,14 +19,14 @@ import (
 
 func TestRegister(t *testing.T) {
 	require.New(t)
-	client1 := (*multiEnv)[0].GetClient("k8ssandra-operator")
-	client2 := (*multiEnv)[1].GetClient("k8ssandra-operator")
+	client1 := (*multiEnv)[0].GetClient("source-namespace")
+	client2 := (*multiEnv)[1].GetClient("dest-namespace")
 
-	if err := client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}); err != nil {
+	if err := client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}); err != nil {
+	if err := client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}); err != nil {
 		t.Fatal(err)
 	}
 
