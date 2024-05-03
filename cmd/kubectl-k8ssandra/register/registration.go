@@ -114,7 +114,7 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 		},
 	}
 	if err := destClient.Create(e.Context, &destSecret); err != nil {
-		return result.Error(err)
+		return result.Error(fmt.Errorf("error creating secret. err: %s sa %s", err, e.ServiceAccount))
 	}
 
 	// Create ClientConfig on destination cluster
