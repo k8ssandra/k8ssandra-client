@@ -2,6 +2,7 @@ package register
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
@@ -54,6 +55,9 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 		registration.GetKubeconfigFileLocation(e.SourceKubeconfig), e.SourceContext,
 		registration.GetKubeconfigFileLocation(e.DestKubeconfig), e.DestContext,
 	)
+	if e.SourceContext == e.DestContext && e.SourceKubeconfig == e.DestKubeconfig {
+		panic(errors.New("source and destination context and kubeconfig are the same, you should not register the same cluster to itself. Reference it by leaving the k8sContext field blank instead"))
+	}
 	srcClient, err := registration.GetClient(e.SourceKubeconfig, e.SourceContext)
 	if err != nil {
 		return result.Error(err)
