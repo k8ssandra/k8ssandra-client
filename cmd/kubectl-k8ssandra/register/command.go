@@ -27,6 +27,14 @@ func Init(cmd *cobra.Command, streams genericclioptions.IOStreams) {
 	RegisterClusterCmd.Flags().String("dest-namespace", "k8ssandra-operator", "namespace where secret and clientConfig will be created on destination cluster")
 	RegisterClusterCmd.Flags().String("serviceaccount-name", "k8ssandra-operator", "serviceaccount name for destination cluster")
 	RegisterClusterCmd.Flags().String("destination-name", "remote-k8ssandra-operator", "name for remote clientConfig and secret on destination cluster")
+
+	if err := RegisterClusterCmd.MarkFlagRequired("source-context"); err != nil {
+		panic(err)
+
+	}
+	if err := RegisterClusterCmd.MarkFlagRequired("dest-context"); err != nil {
+		panic(err)
+	}
 	cmd.AddCommand(RegisterClusterCmd)
 }
 
