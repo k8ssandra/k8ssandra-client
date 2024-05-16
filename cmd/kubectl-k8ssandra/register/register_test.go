@@ -18,16 +18,16 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	require.New(t)
+	require := require.New(t)
 	client1 := (*multiEnv)[0].GetClient("source-namespace")
 	client2 := (*multiEnv)[1].GetClient("dest-namespace")
 
 	if err := client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}); err != nil {
-		require.NoError(t, err)
+		require.NoError(err)
 	}
 
 	if err := client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}); err != nil {
-		require.NoError(t, err)
+		require.NoError(err)
 	}
 
 	buildDir := os.Getenv("BUILD_DIR")
@@ -38,39 +38,46 @@ func TestRegister(t *testing.T) {
 
 	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
 		if err := os.Mkdir(buildDir, os.ModePerm); err != nil {
-			require.NoError(t, err)
+			require.NoError(err)
 		}
 	}
 
 	kc1, err := (*multiEnv)[0].GetKubeconfig(t)
 	if err != nil {
-		require.NoError(t, err)
+		require.NoError(err)
 
 	}
 	f, err := os.Create(buildDir + "/kubeconfig1")
+	t.Cleanup(func() {
+		require.NoError(f.Close())
+		require.NoError(os.RemoveAll(buildDir + "/kubeconfig1"))
+	})
 	if err != nil {
-		require.NoError(t, err)
+		require.NoError(err)
 	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			require.NoError(t, err)
-		}
-	}()
+	t.Cleanup(func() {
+		require.NoError(f.Close())
+		require.NoError(os.RemoveAll(buildDir + "/kubeconfig2"))
+	})
 	if _, err := f.Write(kc1); err != nil {
-		require.NoError(t, err)
+		require.NoError(err)
 	}
 
 	kc2, err := (*multiEnv)[1].GetKubeconfig(t)
 	if err != nil {
-		require.NoError(t, err)
+		require.NoError(err)
 
 	}
 	f, err = os.Create(buildDir + "/kubeconfig2")
 	if err != nil {
-		require.NoError(t, err)
+		require.NoError(err)
 	}
+	t.Cleanup(func() {
+		require.NoError(f.Close())
+		require.NoError(os.RemoveAll(buildDir + "/kubeconfig2"))
+	})
 	if _, err := f.Write(kc2); err != nil {
-		require.NoError(t, err)
+		require.NoError(err)
 	}
 	ex := RegistrationExecutor{
 		SourceKubeconfig: buildDir + "/kubeconfig1",
@@ -85,7 +92,7 @@ func TestRegister(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	require.Eventually(t, func() bool {
+	require.Eventually(func() bool {
 		res := ex.RegisterCluster()
 		switch {
 		case res.IsDone():
@@ -102,16 +109,16 @@ func TestRegister(t *testing.T) {
 	// This relies on a controller that is not running in the envtest.
 
 	desiredSaSecret := &corev1.Secret{}
-	require.NoError(t, client1.Get(context.Background(), client.ObjectKey{Name: "k8ssandra-operator-secret", Namespace: "source-namespace"}, desiredSaSecret))
+	require.NoError(client1.Get(context.Background(), client.ObjectKey{Name: "k8ssandra-operator-secret", Namespace: "source-namespace"}, desiredSaSecret))
 	patch := client.MergeFrom(desiredSaSecret.DeepCopy())
 	desiredSaSecret.Data = map[string][]byte{
 		"token":  []byte("test-token"),
 		"ca.crt": []byte("test-ca"),
 	}
-	require.NoError(t, client1.Patch(ctx, desiredSaSecret, patch))
+	require.NoError(client1.Patch(ctx, desiredSaSecret, patch))
 
 	desiredSa := &corev1.ServiceAccount{}
-	require.NoError(t, client1.Get(
+	require.NoError(client1.Get(
 		context.Background(),
 		client.ObjectKey{Name: "k8ssandra-operator", Namespace: "source-namespace"},
 		desiredSa))
@@ -122,11 +129,11 @@ func TestRegister(t *testing.T) {
 			Name: "k8ssandra-operator-secret",
 		},
 	}
-	require.NoError(t, client1.Patch(ctx, desiredSa, patch))
+	require.NoError(client1.Patch(ctx, desiredSa, patch))
 
 	// Continue reconciliation
 
-	require.Eventually(t, func() bool {
+	require.Eventually(func() bool {
 		res := ex.RegisterCluster()
 		switch {
 		case res.IsDone():
@@ -136,13 +143,13 @@ func TestRegister(t *testing.T) {
 			return false
 		}
 		return false
-	}, time.Second*3000, time.Second*5)
+	}, time.Second*300, time.Second*1)
 
 	if err := configapi.AddToScheme(client2.Scheme()); err != nil {
-		require.NoError(t, err)
+		require.NoError(err)
 	}
 	destSecret := &corev1.Secret{}
-	require.Eventually(t, func() bool {
+	require.Eventually(func() bool {
 		err = client2.Get(ctx,
 			client.ObjectKey{Name: "test-destination", Namespace: "dest-namespace"}, destSecret)
 		if err != nil {

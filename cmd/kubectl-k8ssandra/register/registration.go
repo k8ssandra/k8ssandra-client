@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"github.com/charmbracelet/log"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,7 +29,7 @@ type RegistrationExecutor struct {
 	Context          context.Context
 }
 
-func getDefaultSecret(saName, saNamespace string) *corev1.Secret {
+func getDefaultSecret(saNamespace, saName string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      saName + "-secret",
@@ -40,6 +41,7 @@ func getDefaultSecret(saName, saNamespace string) *corev1.Secret {
 		Type: corev1.SecretTypeServiceAccountToken,
 	}
 }
+
 func getDefaultServiceAccount(saName, saNamespace string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -69,8 +71,10 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 	// Get ServiceAccount
 	serviceAccount := &corev1.ServiceAccount{}
 	if err := srcClient.Get(e.Context, client.ObjectKey{Name: e.ServiceAccount, Namespace: e.SourceNamespace}, serviceAccount); err != nil {
-		if err := srcClient.Create(e.Context, getDefaultServiceAccount(e.ServiceAccount, e.SourceNamespace)); err != nil {
-			return result.Error(err)
+		if apierrors.IsNotFound(err) {
+			if err := srcClient.Create(e.Context, getDefaultServiceAccount(e.ServiceAccount, e.SourceNamespace)); err != nil {
+				return result.Error(err)
+			}
 		}
 		return result.Error(err)
 	}
@@ -87,7 +91,7 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 		}
 	}
 	if secret == nil {
-		secret = getDefaultSecret(e.ServiceAccount, e.SourceNamespace)
+		secret = getDefaultSecret(e.SourceNamespace, e.ServiceAccount)
 		if err := srcClient.Create(e.Context, secret); err != nil {
 			return result.Error(err)
 		}

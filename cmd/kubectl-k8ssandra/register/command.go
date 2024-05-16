@@ -3,6 +3,7 @@ package register
 import (
 	"fmt"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
@@ -44,13 +45,13 @@ func entrypoint(cmd *cobra.Command, args []string) {
 		res := executor.RegisterCluster()
 		switch {
 		case res.IsError():
-			fmt.Println("Registration continuing", res.GetError())
+			log.Info("Registration continuing", "msg", res.GetError())
 			continue
 		case res.Completed():
-			fmt.Println("Registration completed successfully")
+			log.Info("Registration completed successfully")
 			return
 		case res.IsRequeue():
-			fmt.Println("Registration continues")
+			log.Info("Registration continues")
 			continue
 		}
 	}
