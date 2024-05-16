@@ -19,8 +19,8 @@ import (
 
 func TestRegister(t *testing.T) {
 	require := require.New(t)
-	client1 := (*multiEnv)[0].GetClient("source-namespace")
-	client2 := (*multiEnv)[1].GetClient("dest-namespace")
+	client1 := (*multiEnv)[0].GetClientInNamespace("source-namespace")
+	client2 := (*multiEnv)[1].GetClientInNamespace("dest-namespace")
 
 	if err := client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}); err != nil {
 		require.NoError(err)

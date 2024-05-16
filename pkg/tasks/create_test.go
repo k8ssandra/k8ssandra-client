@@ -14,7 +14,7 @@ import (
 
 func TestCreateRestartTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
@@ -32,7 +32,7 @@ func TestCreateRestartTask(t *testing.T) {
 
 func TestCreateClusterRestartTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := "test-dc"
@@ -48,7 +48,7 @@ func TestCreateClusterRestartTask(t *testing.T) {
 
 func TestCreateReplaceTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
@@ -66,7 +66,7 @@ func TestCreateReplaceTask(t *testing.T) {
 
 func TestCreateClusterReplaceTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := "test-dc"
@@ -84,7 +84,7 @@ func TestCreateClusterReplaceTask(t *testing.T) {
 
 func TestCreateFlushTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
@@ -100,7 +100,7 @@ func TestCreateFlushTask(t *testing.T) {
 
 func TestCreateClusterFlushTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := "test-dc"
@@ -116,7 +116,7 @@ func TestCreateClusterFlushTask(t *testing.T) {
 
 func TestCreateCleanupTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
@@ -132,7 +132,7 @@ func TestCreateCleanupTask(t *testing.T) {
 
 func TestCreateClusterCleanupTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := "test-dc"
@@ -148,7 +148,7 @@ func TestCreateClusterCleanupTask(t *testing.T) {
 
 func TestCreateUpgradeSSTablesTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
@@ -164,7 +164,7 @@ func TestCreateUpgradeSSTablesTask(t *testing.T) {
 
 func TestCreateClusterUpgradeSSTablesTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := "test-dc"
@@ -180,7 +180,7 @@ func TestCreateClusterUpgradeSSTablesTask(t *testing.T) {
 
 func TestCreateScrubTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
@@ -196,7 +196,7 @@ func TestCreateScrubTask(t *testing.T) {
 
 func TestCreateClusterScrubTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := "test-dc"
@@ -212,7 +212,7 @@ func TestCreateClusterScrubTask(t *testing.T) {
 
 func TestCreateCompactionTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
@@ -240,7 +240,7 @@ func TestCreateCompactionTask(t *testing.T) {
 
 func TestCreateClusterCompactionTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := "test-dc"
@@ -264,7 +264,7 @@ func TestCreateClusterCompactionTask(t *testing.T) {
 
 func TestCreateGCTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
@@ -280,7 +280,7 @@ func TestCreateGCTask(t *testing.T) {
 
 func TestCreateClusterGCTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := "test-dc"
@@ -296,7 +296,7 @@ func TestCreateClusterGCTask(t *testing.T) {
 
 func TestCreateRebuildTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	dc := &cassdcapi.CassandraDatacenter{}
 	dc.Name = "test-dc"
@@ -317,7 +317,7 @@ func TestCreateRebuildTask(t *testing.T) {
 
 func TestCreateClusterRebuildTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := "test-dc"
@@ -337,7 +337,7 @@ func TestCreateClusterRebuildTask(t *testing.T) {
 
 func TestCreateTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	command := controlapi.CommandRestart
 	dc := &cassdcapi.CassandraDatacenter{}
@@ -352,7 +352,7 @@ func TestCreateTask(t *testing.T) {
 
 func TestCreateTaskLongName(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	command := controlapi.CommandRestart
 	dc := &cassdcapi.CassandraDatacenter{}
@@ -367,7 +367,7 @@ func TestCreateTaskLongName(t *testing.T) {
 
 func TestCreateClusterWideTask(t *testing.T) {
 	namespace := env.CreateNamespace(t)
-	kubeClient := env.GetClient(namespace)
+	kubeClient := env.GetClientInNamespace(namespace)
 
 	cluster := "test-cluster"
 	dcName := ""

@@ -53,7 +53,7 @@ func NewEnvironment(ctx context.Context) *Environment {
 	return env
 }
 
-func (e *Environment) GetClient(namespace string) client.Client {
+func (e *Environment) GetClientInNamespace(namespace string) client.Client {
 	c, err := kubernetes.GetClientInNamespace(e.env.Config, namespace)
 	if err != nil {
 		panic(err)
