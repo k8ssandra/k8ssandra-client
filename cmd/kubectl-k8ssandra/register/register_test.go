@@ -23,11 +23,11 @@ func TestRegister(t *testing.T) {
 	client2 := (*multiEnv)[1].GetClient("dest-namespace")
 
 	if err := client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 
 	if err := client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 
 	buildDir := os.Getenv("BUILD_DIR")
@@ -38,39 +38,39 @@ func TestRegister(t *testing.T) {
 
 	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
 		if err := os.Mkdir(buildDir, os.ModePerm); err != nil {
-			t.Fatal(err)
+			require.NoError(t, err)
 		}
 	}
 
 	kc1, err := (*multiEnv)[0].GetKubeconfig(t)
 	if err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 
 	}
 	f, err := os.Create(buildDir + "/kubeconfig1")
 	if err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			t.Fatal(err)
+			require.NoError(t, err)
 		}
 	}()
 	if _, err := f.Write(kc1); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 
 	kc2, err := (*multiEnv)[1].GetKubeconfig(t)
 	if err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 
 	}
 	f, err = os.Create(buildDir + "/kubeconfig2")
 	if err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	if _, err := f.Write(kc2); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	ex := RegistrationExecutor{
 		SourceKubeconfig: buildDir + "/kubeconfig1",
@@ -139,7 +139,7 @@ func TestRegister(t *testing.T) {
 	}, time.Second*3000, time.Second*5)
 
 	if err := configapi.AddToScheme(client2.Scheme()); err != nil {
-		t.Fatal(err)
+		require.NoError(t, err)
 	}
 	destSecret := &corev1.Secret{}
 	require.Eventually(t, func() bool {
