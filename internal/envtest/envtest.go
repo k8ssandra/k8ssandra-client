@@ -125,7 +125,7 @@ func (e *Environment) CreateNamespace(t *testing.T) string {
 	return namespace
 }
 
-func (e *Environment) GetKubeconfig(t *testing.T) ([]byte, error) {
+func (e *Environment) GetKubeconfig() ([]byte, error) {
 	clientConfig, err := CreateKubeconfigFileForRestConfig(e.env.Config)
 	if err != nil {
 		return nil, err
