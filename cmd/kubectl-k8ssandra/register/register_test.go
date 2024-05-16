@@ -4,10 +4,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
+	"github.com/k8ssandra/k8ssandra-client/internal/envtest"
 	configapi "github.com/k8ssandra/k8ssandra-operator/apis/config/v1beta1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -24,12 +24,7 @@ func TestRegister(t *testing.T) {
 	require.NoError(client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}))
 	require.NoError(client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}))
 
-	buildDir := os.Getenv("BUILD_DIR")
-	if buildDir == "" {
-		_, b, _, _ := runtime.Caller(0)
-		buildDir = filepath.Join(filepath.Dir(b), "../../../build")
-	}
-
+	buildDir := filepath.Join(envtest.RootDir(), "build")
 	testDir := filepath.Join(buildDir, time.Now().String())
 
 	if _, err := os.Stat(testDir); os.IsNotExist(err) {
