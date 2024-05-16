@@ -32,7 +32,7 @@ func Run(m *testing.M, setupFunc func(e *Environment)) (code int) {
 }
 
 type Environment struct {
-	Client        client.Client
+	client        client.Client
 	env           *envtest.Environment
 	cancelManager context.CancelFunc
 	Context       context.Context
@@ -66,7 +66,7 @@ func (e *Environment) RestConfig() *rest.Config {
 }
 
 func (e *Environment) RawClient() client.Client {
-	return e.Client
+	return e.client
 }
 
 func (e *Environment) Start() {
@@ -102,7 +102,7 @@ func (e *Environment) Start() {
 
 	//+kubebuilder:scaffold:scheme
 
-	e.Client = k8sClient
+	e.client = k8sClient
 	// e.Kubeconfig, err = CreateKubeconfigFileForRestConfig(e.env.Config)
 	// if err != nil {
 	// 	panic(err)
@@ -118,7 +118,7 @@ func (e *Environment) Stop() {
 
 func (e *Environment) CreateNamespace(t *testing.T) string {
 	namespace := strings.ToLower(t.Name())
-	if err := kubernetes.CreateNamespaceIfNotExists(e.Client, namespace); err != nil {
+	if err := kubernetes.CreateNamespaceIfNotExists(e.client, namespace); err != nil {
 		t.FailNow()
 	}
 
