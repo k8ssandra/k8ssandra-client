@@ -21,14 +21,8 @@ func TestRegister(t *testing.T) {
 	require := require.New(t)
 	client1 := (*multiEnv)[0].GetClientInNamespace("source-namespace")
 	client2 := (*multiEnv)[1].GetClientInNamespace("dest-namespace")
-
-	if err := client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}); err != nil {
-		require.NoError(err)
-	}
-
-	if err := client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}); err != nil {
-		require.NoError(err)
-	}
+	require.NoError(client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}))
+	require.NoError(client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}))
 
 	buildDir := os.Getenv("BUILD_DIR")
 	if buildDir == "" {
@@ -36,52 +30,41 @@ func TestRegister(t *testing.T) {
 		buildDir = filepath.Join(filepath.Dir(b), "../../../build")
 	}
 
-	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
-		if err := os.Mkdir(buildDir, os.ModePerm); err != nil {
-			require.NoError(err)
-		}
-	}
+	testDir := filepath.Join(buildDir, time.Now().String())
 
-	kc1, err := (*multiEnv)[0].GetKubeconfig(t)
-	if err != nil {
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		err := os.Mkdir(testDir, os.ModePerm)
 		require.NoError(err)
-
+	} else if err != nil {
+		require.NoError(err)
 	}
-	f, err := os.Create(buildDir + "/kubeconfig1")
+
+	kc1, err := (*multiEnv)[0].GetKubeconfig()
+	require.NoError(err)
+	f1, err := os.Create(testDir + "/kubeconfig1")
+	require.NoError(err)
 	t.Cleanup(func() {
-		require.NoError(f.Close())
-		require.NoError(os.RemoveAll(buildDir + "/kubeconfig1"))
+		require.NoError(f1.Close())
+		require.NoError(os.RemoveAll(testDir + "/kubeconfig1"))
 	})
-	if err != nil {
-		require.NoError(err)
-	}
-	t.Cleanup(func() {
-		require.NoError(f.Close())
-		require.NoError(os.RemoveAll(buildDir + "/kubeconfig2"))
-	})
-	if _, err := f.Write(kc1); err != nil {
-		require.NoError(err)
-	}
+	_, err = f1.Write(kc1)
+	require.NoError(err)
 
-	kc2, err := (*multiEnv)[1].GetKubeconfig(t)
-	if err != nil {
-		require.NoError(err)
-
-	}
-	f, err = os.Create(buildDir + "/kubeconfig2")
-	if err != nil {
-		require.NoError(err)
-	}
+	f2, err := os.Create(testDir + "/kubeconfig2")
+	require.NoError(err)
 	t.Cleanup(func() {
-		require.NoError(f.Close())
-		require.NoError(os.RemoveAll(buildDir + "/kubeconfig2"))
+		require.NoError(f2.Close())
+		require.NoError(os.RemoveAll(testDir + "/kubeconfig2"))
 	})
-	if _, err := f.Write(kc2); err != nil {
-		require.NoError(err)
-	}
+
+	kc2, err := (*multiEnv)[1].GetKubeconfig()
+	require.NoError(err)
+	_, err = f2.Write(kc2)
+	require.NoError(err)
+
 	ex := RegistrationExecutor{
-		SourceKubeconfig: buildDir + "/kubeconfig1",
-		DestKubeconfig:   buildDir + "/kubeconfig2",
+		SourceKubeconfig: testDir + "/kubeconfig1",
+		DestKubeconfig:   testDir + "/kubeconfig2",
 		SourceContext:    "default-context",
 		DestContext:      "default-context",
 		SourceNamespace:  "source-namespace",
@@ -167,11 +150,11 @@ func TestRegister(t *testing.T) {
 	}, time.Second*60, time.Second*5)
 
 	destKubeconfig := ClientConfigFromSecret(destSecret)
-	require.Equal(t,
+	require.Equal(
 		desiredSaSecret.Data["ca.crt"],
 		destKubeconfig.Clusters["cluster"].CertificateAuthorityData)
 
-	require.Equal(t,
+	require.Equal(
 		string(desiredSaSecret.Data["token"]),
 		destKubeconfig.AuthInfos["cluster"].Token)
 }

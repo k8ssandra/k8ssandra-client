@@ -15,7 +15,7 @@ var RegisterClusterCmd = &cobra.Command{
 	Run:   entrypoint,
 }
 
-func Init(cmd *cobra.Command, streams genericclioptions.IOStreams) {
+func SetupRegisterClusterCmd(cmd *cobra.Command, streams genericclioptions.IOStreams) {
 	RegisterClusterCmd.Flags().String("source-kubeconfig",
 		"",
 		"path to source cluster's kubeconfig file - defaults to KUBECONFIG then ~/.kube/config")

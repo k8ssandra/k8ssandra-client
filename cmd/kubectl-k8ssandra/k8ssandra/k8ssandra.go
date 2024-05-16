@@ -54,7 +54,7 @@ func NewCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	// cmd.AddCommand(migrate.NewInstallCmd(streams))
 	cmd.AddCommand(config.NewCmd(streams))
 	cmd.AddCommand(helm.NewHelmCmd(streams))
-	register.Init(cmd, streams)
+	register.SetupRegisterClusterCmd(cmd, streams)
 
 	// cmd.Flags().BoolVar(&o.listNamespaces, "list", o.listNamespaces, "if true, print the list of all namespaces in the current KUBECONFIG")
 	o.configFlags.AddFlags(cmd.Flags())
