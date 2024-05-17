@@ -33,6 +33,9 @@ func TestRegister(t *testing.T) {
 	} else if err != nil {
 		require.NoError(err)
 	}
+	t.Cleanup(func() {
+		require.NoError(os.RemoveAll(testDir))
+	})
 
 	kc1, err := (*multiEnv)[0].GetKubeconfig()
 	require.NoError(err)
@@ -40,7 +43,6 @@ func TestRegister(t *testing.T) {
 	require.NoError(err)
 	t.Cleanup(func() {
 		require.NoError(f1.Close())
-		require.NoError(os.RemoveAll(testDir + "/kubeconfig1"))
 	})
 	_, err = f1.Write(kc1)
 	require.NoError(err)
@@ -49,7 +51,6 @@ func TestRegister(t *testing.T) {
 	require.NoError(err)
 	t.Cleanup(func() {
 		require.NoError(f2.Close())
-		require.NoError(os.RemoveAll(testDir + "/kubeconfig2"))
 	})
 
 	kc2, err := (*multiEnv)[1].GetKubeconfig()
