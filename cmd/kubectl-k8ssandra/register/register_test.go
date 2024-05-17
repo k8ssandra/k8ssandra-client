@@ -28,7 +28,7 @@ func TestRegister(t *testing.T) {
 	testDir := filepath.Join(buildDir, time.Now().String())
 
 	if _, err := os.Stat(testDir); os.IsNotExist(err) {
-		err := os.Mkdir(testDir, os.ModePerm)
+		err := os.MkdirAll(testDir, os.ModePerm)
 		require.NoError(err)
 	} else if err != nil {
 		require.NoError(err)
