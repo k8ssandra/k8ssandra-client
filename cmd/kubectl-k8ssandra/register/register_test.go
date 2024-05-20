@@ -2,6 +2,7 @@ package register
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -73,14 +74,15 @@ func TestRegister(t *testing.T) {
 
 	require.Eventually(func() bool {
 		res := ex.RegisterCluster()
-		switch {
-		case res.IsDone():
-			return true
-		case res.IsError():
-			t.Log(res.GetError())
-			if res.GetError().Error() == "no secret found for service account k8ssandra-operator" {
+		switch v := res.(type) {
+		case RetryableError:
+			if res.Error() == "no secret found for service account k8ssandra-operator" {
 				return true
 			}
+		case nil:
+			return true
+		case NonRecoverableError:
+			panic(fmt.Sprintf("Registration failed: %s", v.Error()))
 		}
 		return false
 	}, time.Second*30, time.Second*5)
@@ -114,14 +116,7 @@ func TestRegister(t *testing.T) {
 
 	require.Eventually(func() bool {
 		res := ex.RegisterCluster()
-		switch {
-		case res.IsDone():
-			return true
-		case res.IsError():
-			t.Log(res.GetError())
-			return false
-		}
-		return false
+		return res == nil
 	}, time.Second*300, time.Second*1)
 
 	if err := configapi.AddToScheme(client2.Scheme()); err != nil {

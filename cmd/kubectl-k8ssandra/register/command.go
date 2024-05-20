@@ -44,16 +44,15 @@ func entrypoint(cmd *cobra.Command, args []string) {
 	// insert validation that if e.SourceContext == e.DestContext && e.SourceKubeconfig == e.DestKubeconfig {
 	for i := 0; i < 30; i++ {
 		res := executor.RegisterCluster()
-		switch {
-		case res.IsError():
-			log.Info("Registration continuing", "msg", res.GetError())
+		switch v := res.(type) {
+		case RetryableError:
+			log.Info("Registration continuing", "msg", v.Error())
 			continue
-		case res.Completed():
+		case nil:
 			log.Info("Registration completed successfully")
 			return
-		case res.IsRequeue():
-			log.Info("Registration continues")
-			continue
+		case NonRecoverableError:
+			panic(fmt.Sprintf("Registration failed: %s", v.Error()))
 		}
 	}
 	fmt.Println("Registration failed - retries exceeded")

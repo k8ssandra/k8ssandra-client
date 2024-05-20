@@ -15,7 +15,6 @@ import (
 
 	"github.com/k8ssandra/k8ssandra-client/pkg/registration"
 	configapi "github.com/k8ssandra/k8ssandra-operator/apis/config/v1beta1"
-	"github.com/k8ssandra/k8ssandra-operator/pkg/result"
 )
 
 type RegistrationExecutor struct {
@@ -52,7 +51,7 @@ func getDefaultServiceAccount(saName, saNamespace string) *corev1.ServiceAccount
 	}
 }
 
-func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
+func (e *RegistrationExecutor) RegisterCluster() error {
 	log.Printf("Registering cluster from %s Context: %s to %s Context: %s",
 		registration.GetKubeconfigFileLocation(e.SourceKubeconfig), e.SourceContext,
 		registration.GetKubeconfigFileLocation(e.DestKubeconfig), e.DestContext,
@@ -62,26 +61,26 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 	}
 	srcClient, err := registration.GetClient(e.SourceKubeconfig, e.SourceContext)
 	if err != nil {
-		return result.Error(err)
+		return RetryableError{Message: err.Error()}
 	}
 	destClient, err := registration.GetClient(e.DestKubeconfig, e.DestContext)
 	if err != nil {
-		return result.Error(err)
+		return RetryableError{Message: err.Error()}
 	}
 	// Get ServiceAccount
 	serviceAccount := &corev1.ServiceAccount{}
 	if err := srcClient.Get(e.Context, client.ObjectKey{Name: e.ServiceAccount, Namespace: e.SourceNamespace}, serviceAccount); err != nil {
 		if apierrors.IsNotFound(err) {
 			if err := srcClient.Create(e.Context, getDefaultServiceAccount(e.ServiceAccount, e.SourceNamespace)); err != nil {
-				return result.Error(err)
+				return RetryableError{Message: err.Error()}
 			}
 		}
-		return result.Error(err)
+		return RetryableError{Message: err.Error()}
 	}
 	// Get a secret in this namespace which holds the service account token
 	secretsList := &corev1.SecretList{}
 	if err := srcClient.List(e.Context, secretsList, client.InNamespace(e.SourceNamespace)); err != nil {
-		return result.Error(err)
+		return RetryableError{Message: err.Error()}
 	}
 	var secret *corev1.Secret
 	for _, s := range secretsList.Items {
@@ -93,23 +92,23 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 	if secret == nil {
 		secret = getDefaultSecret(e.SourceNamespace, e.ServiceAccount)
 		if err := srcClient.Create(e.Context, secret); err != nil {
-			return result.Error(err)
+			return RetryableError{Message: err.Error()}
 		}
-		return result.Error(fmt.Errorf("no secret found for service account %s", e.ServiceAccount))
+		return RetryableError{Message: fmt.Sprintf("no secret found for service account %s", e.ServiceAccount)}
 	}
 
 	// Create Secret on destination cluster
 	host, err := registration.KubeconfigToHost(e.SourceKubeconfig, e.SourceContext)
 	if err != nil {
-		return result.Error(err)
+		return RetryableError{Message: err.Error()}
 	}
 	saConfig, err := registration.TokenToKubeconfig(*secret, host)
 	if err != nil {
-		return result.Error(fmt.Errorf("error converting token to kubeconfig: %w, secret: %#v", err, secret))
+		return RetryableError{fmt.Sprintf("error converting token to kubeconfig: %s, secret: %#v", err.Error(), secret)}
 	}
 	secretData, err := clientcmd.Write(saConfig)
 	if err != nil {
-		return result.Error(err)
+		return RetryableError{Message: err.Error()}
 	}
 	destSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -122,12 +121,12 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 		},
 	}
 	if err := destClient.Create(e.Context, &destSecret); err != nil {
-		return result.Error(fmt.Errorf("error creating secret. err: %s sa %s", err, e.ServiceAccount))
+		return RetryableError{fmt.Sprintf("error creating secret. err: %s sa %s", err, e.ServiceAccount)}
 	}
 
 	// Create ClientConfig on destination cluster
 	if err := configapi.AddToScheme(destClient.Scheme()); err != nil {
-		return result.Error(err)
+		return RetryableError{Message: err.Error()}
 	}
 	destClientConfig := configapi.ClientConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -141,7 +140,7 @@ func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {
 		},
 	}
 	if err := destClient.Create(e.Context, &destClientConfig); err != nil {
-		return result.Error(err)
+		return RetryableError{Message: err.Error()}
 	}
-	return result.Done()
+	return nil
 }
