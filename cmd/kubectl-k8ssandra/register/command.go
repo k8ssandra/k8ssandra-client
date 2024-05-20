@@ -41,6 +41,7 @@ func SetupRegisterClusterCmd(cmd *cobra.Command, streams genericclioptions.IOStr
 
 func entrypoint(cmd *cobra.Command, args []string) {
 	executor := NewRegistrationExecutorFromRegisterClusterCmd(*cmd)
+	// insert validation that if e.SourceContext == e.DestContext && e.SourceKubeconfig == e.DestKubeconfig {
 	for i := 0; i < 30; i++ {
 		res := executor.RegisterCluster()
 		switch {

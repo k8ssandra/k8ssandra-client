@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/charmbracelet/log"
 
 	corev1 "k8s.io/api/core/v1"
@@ -49,7 +50,6 @@ func getDefaultServiceAccount(saName, saNamespace string) *corev1.ServiceAccount
 			Namespace: saNamespace,
 		},
 	}
-
 }
 
 func (e *RegistrationExecutor) RegisterCluster() result.ReconcileResult {

@@ -36,7 +36,6 @@ type Environment struct {
 	env           *envtest.Environment
 	cancelManager context.CancelFunc
 	Context       context.Context
-	Kubeconfig    string
 }
 
 func NewEnvironment(ctx context.Context) *Environment {
