@@ -32,5 +32,6 @@ func TokenToKubeconfig(s corev1.Secret, server string) (clientcmdapi.Config, err
 				AuthInfo: "cluster",
 			},
 		},
+		CurrentContext: "cluster",
 	}, nil
 }
