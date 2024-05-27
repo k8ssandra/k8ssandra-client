@@ -28,14 +28,14 @@ func RunMulti(m *testing.M, setupFunc func(e *MultiK8sEnvironment), numClusters 
 	return exitCode
 }
 
-func RunMultiKind(m *testing.M, setupFunc func(e *MultiK8sEnvironment), topology []int) (code int) {
+func RunMultiKind(m *testing.M, setupFunc func(e *MultiK8sEnvironment), topology []int, testDir string) (code int) {
 	e := make(MultiK8sEnvironment, len(topology))
 	ctx := ctrl.SetupSignalHandler()
 	var wg sync.WaitGroup
 	for i := 0; i < len(topology); i++ {
 		cluster := KindManager{
 			ClusterName:        "cluster" + strconv.Itoa(i),
-			KubeconfigLocation: os.NewFile(0, GetBuildDir()+"/cluster"+strconv.Itoa(i)),
+			KubeconfigLocation: os.NewFile(0, testDir+"/cluster"+strconv.Itoa(i)),
 			Nodes:              topology[i],
 		}
 		wg.Add(1)

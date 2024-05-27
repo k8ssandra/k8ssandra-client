@@ -72,14 +72,13 @@ func NewKindEnvironment(ctx context.Context, cluster KindManager) *Environment {
 	ctx, cancel := context.WithCancel(ctx)
 	env.Context = ctx
 	env.cancelManager = cancel
-	env.Client = *cluster.client
 	env.Kubeconfig = cluster.KubeconfigLocation.Name()
 	env.env.Config = cluster.RestConfig
 	env.KindCluster = cluster
 	return env
 }
 
-func (e *Environment) GetClient(namespace string) client.Client {
+func (e *Environment) GetClientInNamespace(namespace string) client.Client {
 	c, err := kubernetes.GetClientInNamespace(e.env.Config, namespace)
 	if err != nil {
 		panic(err)
