@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"github.com/adutra/goalesce"
 	metadata "github.com/burmanm/definitions-parser/pkg/types"
 	gentypes "github.com/burmanm/definitions-parser/pkg/types/generated"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -82,6 +84,11 @@ func (b *Builder) Build(ctx context.Context) error {
 
 	// Create cassandra.yaml
 	if err := createCassandraYaml(configInput, nodeInfo, b.configInputDir, b.configOutputDir); err != nil {
+		return err
+	}
+
+	// Copy files which we're not modifying
+	if err := copyFiles(b.configInputDir, b.configOutputDir); err != nil {
 		return err
 	}
 
@@ -483,4 +490,41 @@ func writeYaml(doc map[string]interface{}, targetFile string) error {
 	}
 
 	return os.WriteFile(targetFile, b, 0660)
+}
+
+func copyFiles(sourceDir, targetDir string) error {
+	// Copy the files we're not modifying
+	files := []string{"jvm-client.options", "jvm11-client.options", "jvm17-client.options", "logback.xml", "logback-tools.xml"}
+
+	for _, f := range files {
+		sourceFile := filepath.Join(sourceDir, f)
+		targetFile := filepath.Join(targetDir, f)
+
+		if _, err := os.Stat(sourceFile); err == nil {
+			if err := copyFile(sourceFile, targetFile); err != nil {
+				return err
+			}
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func copyFile(source, target string) error {
+	src, err := os.Open(source)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to open %s", source))
+	}
+	defer src.Close()
+
+	dst, err := os.Create(target)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to open %s", target))
+	}
+	defer dst.Close()
+
+	_, err = io.Copy(dst, src)
+	return err
 }
