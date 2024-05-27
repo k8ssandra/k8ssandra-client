@@ -27,7 +27,7 @@ func SetupRegisterClusterCmd(cmd *cobra.Command, streams genericclioptions.IOStr
 	RegisterClusterCmd.Flags().String("source-namespace", "k8ssandra-operator", "namespace containing service account for source cluster")
 	RegisterClusterCmd.Flags().String("dest-namespace", "k8ssandra-operator", "namespace where secret and clientConfig will be created on destination cluster")
 	RegisterClusterCmd.Flags().String("serviceaccount-name", "k8ssandra-operator", "serviceaccount name for destination cluster")
-	RegisterClusterCmd.Flags().String("destination-name", "remote-k8ssandra-operator", "name for remote clientConfig and secret on destination cluster")
+	RegisterClusterCmd.Flags().String("destination-name", "", "name for remote clientConfig and secret on destination cluster")
 
 	if err := RegisterClusterCmd.MarkFlagRequired("source-context"); err != nil {
 		panic(err)
@@ -59,15 +59,21 @@ func entrypoint(cmd *cobra.Command, args []string) {
 }
 
 func NewRegistrationExecutorFromRegisterClusterCmd(cmd cobra.Command) *RegistrationExecutor {
+
+	destName := cmd.Flag("destination-name").Value.String()
+	srcContext := cmd.Flag("source-context").Value.String()
+	if destName == "" {
+		destName = srcContext
+	}
 	return &RegistrationExecutor{
 		SourceKubeconfig: cmd.Flag("source-kubeconfig").Value.String(),
 		DestKubeconfig:   cmd.Flag("dest-kubeconfig").Value.String(),
-		SourceContext:    cmd.Flag("source-context").Value.String(),
+		SourceContext:    srcContext,
 		DestContext:      cmd.Flag("dest-context").Value.String(),
 		SourceNamespace:  cmd.Flag("source-namespace").Value.String(),
 		DestNamespace:    cmd.Flag("dest-namespace").Value.String(),
 		ServiceAccount:   cmd.Flag("serviceaccount-name").Value.String(),
 		Context:          cmd.Context(),
-		DestinationName:  cmd.Flag("destination-name").Value.String(),
+		DestinationName:  destName,
 	}
 }
