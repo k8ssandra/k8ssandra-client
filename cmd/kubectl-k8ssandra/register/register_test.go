@@ -143,11 +143,11 @@ func TestRegister(t *testing.T) {
 	destKubeconfig := ClientConfigFromSecret(destSecret)
 	require.Equal(
 		desiredSaSecret.Data["ca.crt"],
-		destKubeconfig.Clusters["cluster"].CertificateAuthorityData)
+		destKubeconfig.Clusters["test-destination"].CertificateAuthorityData)
 
 	require.Equal(
 		string(desiredSaSecret.Data["token"]),
-		destKubeconfig.AuthInfos["cluster"].Token)
+		destKubeconfig.AuthInfos["test-destination"].Token)
 }
 
 func ClientConfigFromSecret(s *corev1.Secret) clientcmdapi.Config {

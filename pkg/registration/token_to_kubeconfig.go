@@ -7,7 +7,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
-func TokenToKubeconfig(s corev1.Secret, server string) (clientcmdapi.Config, error) {
+func TokenToKubeconfig(s corev1.Secret, server, destinationName string) (clientcmdapi.Config, error) {
 	caData, foundCa := s.Data["ca.crt"]
 	tokenData, foundToken := s.Data["token"]
 	if !foundCa || !foundToken {
@@ -16,22 +16,22 @@ func TokenToKubeconfig(s corev1.Secret, server string) (clientcmdapi.Config, err
 
 	return clientcmdapi.Config{
 		Clusters: map[string]*clientcmdapi.Cluster{
-			"cluster": {
+			destinationName: {
 				Server:                   server,
 				CertificateAuthorityData: caData,
 			},
 		},
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{
-			"cluster": {
+			destinationName: {
 				Token: string(tokenData),
 			},
 		},
 		Contexts: map[string]*clientcmdapi.Context{
-			"cluster": {
-				Cluster:  "cluster",
-				AuthInfo: "cluster",
+			destinationName: {
+				Cluster:  destinationName,
+				AuthInfo: destinationName,
 			},
 		},
-		CurrentContext: "cluster",
+		CurrentContext: destinationName,
 	}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/log"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -101,7 +102,7 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 	if err != nil {
 		return RetryableError{Message: err.Error()}
 	}
-	saConfig, err := registration.TokenToKubeconfig(*secret, host, e.SourceContext)
+	saConfig, err := registration.TokenToKubeconfig(*secret, host, e.DestinationName)
 	if err != nil {
 		return RetryableError{fmt.Sprintf("error converting token to kubeconfig: %s, secret: %#v", err.Error(), secret)}
 	}
@@ -136,6 +137,7 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 			KubeConfigSecret: corev1.LocalObjectReference{
 				Name: e.DestinationName,
 			},
+			ContextName: e.DestinationName,
 		},
 	}
 	if err := destClient.Create(e.Context, &destClientConfig); err != nil && !errors.IsAlreadyExists(err) {
