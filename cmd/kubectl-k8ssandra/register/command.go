@@ -1,6 +1,7 @@
 package register
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/charmbracelet/log"
@@ -13,7 +14,7 @@ var RegisterClusterCmd = &cobra.Command{
 	Use:   "register [flags]",
 	Short: "register a data plane into the control plane.",
 	Long:  `register creates a ServiceAccount on a source cluster, copies its credentials and then creates a secret containing them on the destination cluster. It then also creates a ClientConfig on the destination cluster to reference the secret.`,
-	Run:   entrypoint,
+	RunE:  entrypoint,
 }
 
 func SetupRegisterClusterCmd(cmd *cobra.Command, streams genericclioptions.IOStreams) {
@@ -40,23 +41,24 @@ func SetupRegisterClusterCmd(cmd *cobra.Command, streams genericclioptions.IOStr
 	cmd.AddCommand(RegisterClusterCmd)
 }
 
-func entrypoint(cmd *cobra.Command, args []string) {
+func entrypoint(cmd *cobra.Command, args []string) error {
 	executor := NewRegistrationExecutorFromRegisterClusterCmd(*cmd)
 
+	// TODO What is this magic number 30?
 	for i := 0; i < 30; i++ {
-		res := executor.RegisterCluster()
-		switch v := res.(type) {
-		case RetryableError:
-			log.Info("Registration continuing", "msg", v.Error())
+		if err := executor.RegisterCluster(); err != nil {
+			if errors.Is(err, NonRecoverableError{}) {
+				log.Error(fmt.Sprintf("Registration failed: %s", err.Error()))
+				return err
+			}
+			log.Info("Registration still in progress", "msg", err.Error())
 			continue
-		case nil:
-			log.Info("Registration completed successfully")
-			return
-		case NonRecoverableError:
-			panic(fmt.Sprintf("Registration failed: %s", v.Error()))
 		}
+		log.Info("Registration completed successfully")
+		return nil
 	}
-	fmt.Println("Registration failed - retries exceeded")
+	log.Error("Registration failed - retries exceeded")
+	return nil
 }
 
 func NewRegistrationExecutorFromRegisterClusterCmd(cmd cobra.Command) *RegistrationExecutor {

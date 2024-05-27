@@ -1,11 +1,7 @@
 package register
 
-type RetryableError struct {
-	Message string
-}
-
-func (e RetryableError) Error() string {
-	return e.Message
+func NonRecoverable(err string) NonRecoverableError {
+	return NonRecoverableError{Message: err}
 }
 
 type NonRecoverableError struct {

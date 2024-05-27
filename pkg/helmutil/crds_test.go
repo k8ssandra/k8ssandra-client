@@ -66,7 +66,7 @@ func TestUpgradingCRDs(t *testing.T) {
 			require.NoError(kubeClient.Get(context.TODO(), client.ObjectKey{Name: cassDCCRD.GetName()}, cassDCCRD))
 			newver := cassDCCRD.GetResourceVersion()
 			return newver != ver
-		}, time.Minute*1, time.Second*5)
+		}, time.Minute*1, time.Millisecond*100)
 
 		descRunsAsCassandra = cassDCCRD.Spec.Versions[0].DeepCopy().Schema.OpenAPIV3Schema.Properties["spec"].Properties["dockerImageRunsAsCassandra"].Description
 		require.True(strings.HasPrefix(descRunsAsCassandra, "DEPRECATED"))

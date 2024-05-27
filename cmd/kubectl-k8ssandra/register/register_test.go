@@ -2,6 +2,7 @@ package register
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -25,15 +26,6 @@ func TestRegister(t *testing.T) {
 
 	testDir, err := os.MkdirTemp("", "k8ssandra-operator-test-****")
 	require.NoError(err)
-	// buildDir := filepath.Join(envtest.RootDir(), "build")
-	// testDir := filepath.Join(buildDir, time.Now())
-
-	// if _, err := os.Stat(testDir); os.IsNotExist(err) {
-	// 	err := os.MkdirAll(testDir, os.ModePerm)
-	// 	require.NoError(err)
-	// } else if err != nil {
-	// 	require.NoError(err)
-	// }
 	t.Cleanup(func() {
 		require.NoError(os.RemoveAll(testDir))
 	})
@@ -73,19 +65,17 @@ func TestRegister(t *testing.T) {
 	ctx := context.Background()
 
 	require.Eventually(func() bool {
-		res := ex.RegisterCluster()
-		switch v := res.(type) {
-		case RetryableError:
-			if res.Error() == "no secret found for service account k8ssandra-operator" {
+		if err := ex.RegisterCluster(); err != nil {
+			if errors.Is(err, NonRecoverableError{}) {
+				require.FailNow(fmt.Sprintf("Registration failed: %s", err.Error()))
+			}
+			if err.Error() == "no secret found for service account k8ssandra-operator" {
 				return true
 			}
-		case nil:
-			return true
-		case NonRecoverableError:
-			panic(fmt.Sprintf("Registration failed: %s", v.Error()))
+			return false
 		}
-		return false
-	}, time.Second*30, time.Second*5)
+		return true
+	}, time.Second*5, time.Millisecond*100)
 
 	// This relies on a controller that is not running in the envtest.
 
@@ -115,9 +105,8 @@ func TestRegister(t *testing.T) {
 	// Continue reconciliation
 
 	require.Eventually(func() bool {
-		res := ex.RegisterCluster()
-		return res == nil
-	}, time.Second*300, time.Second*1)
+		return ex.RegisterCluster() == nil
+	}, time.Second*3, time.Millisecond*100)
 
 	if err := configapi.AddToScheme(client2.Scheme()); err != nil {
 		require.NoError(err)
@@ -138,7 +127,7 @@ func TestRegister(t *testing.T) {
 			return false
 		}
 		return err == nil
-	}, time.Second*60, time.Second*5)
+	}, time.Second*6, time.Millisecond*100)
 
 	destKubeconfig := ClientConfigFromSecret(destSecret)
 	require.Equal(

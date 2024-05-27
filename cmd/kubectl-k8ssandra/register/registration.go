@@ -56,32 +56,37 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 		registration.GetKubeconfigFileLocation(e.SourceKubeconfig), e.SourceContext,
 		registration.GetKubeconfigFileLocation(e.DestKubeconfig), e.DestContext,
 	)
+
 	if e.SourceContext == e.DestContext && e.SourceKubeconfig == e.DestKubeconfig {
-		return NonRecoverableError{Message: "source and destination context and kubeconfig are the same, you should not register the same cluster to itself. Reference it by leaving the k8sContext field blank instead"}
+		return NonRecoverable("source and destination context and kubeconfig are the same, you should not register the same cluster to itself. Reference it by leaving the k8sContext field blank instead")
 	}
+
 	srcClient, err := registration.GetClient(e.SourceKubeconfig, e.SourceContext)
 	if err != nil {
-		return RetryableError{Message: err.Error()}
+		return err
 	}
+
 	destClient, err := registration.GetClient(e.DestKubeconfig, e.DestContext)
 	if err != nil {
-		return RetryableError{Message: err.Error()}
+		return err
 	}
+
 	// Get ServiceAccount
 	serviceAccount := &corev1.ServiceAccount{}
 	if err := srcClient.Get(e.Context, client.ObjectKey{Name: e.ServiceAccount, Namespace: e.SourceNamespace}, serviceAccount); err != nil {
 		if apierrors.IsNotFound(err) {
 			if err := srcClient.Create(e.Context, getDefaultServiceAccount(e.ServiceAccount, e.SourceNamespace)); err != nil {
-				return RetryableError{Message: err.Error()}
+				return err
 			}
 		}
-		return RetryableError{Message: err.Error()}
+		return err
 	}
 	// Get a secret in this namespace which holds the service account token
 	secretsList := &corev1.SecretList{}
 	if err := srcClient.List(e.Context, secretsList, client.InNamespace(e.SourceNamespace)); err != nil {
-		return RetryableError{Message: err.Error()}
+		return err
 	}
+
 	var secret *corev1.Secret
 	for _, s := range secretsList.Items {
 		if s.Annotations["kubernetes.io/service-account.name"] == e.ServiceAccount && s.Type == corev1.SecretTypeServiceAccountToken {
@@ -89,26 +94,28 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 			break
 		}
 	}
+
 	if secret == nil {
 		secret = getDefaultSecret(e.SourceNamespace, e.ServiceAccount)
 		if err := srcClient.Create(e.Context, secret); err != nil {
-			return RetryableError{Message: err.Error()}
+			return err
 		}
-		return RetryableError{Message: fmt.Sprintf("no secret found for service account %s", e.ServiceAccount)}
+		return fmt.Errorf("no secret found for service account %s", e.ServiceAccount)
 	}
 
 	// Create Secret on destination cluster
 	host, err := registration.KubeconfigToHost(e.SourceKubeconfig, e.SourceContext)
 	if err != nil {
-		return RetryableError{Message: err.Error()}
+		return err
 	}
 	saConfig, err := registration.TokenToKubeconfig(*secret, host, e.DestinationName)
 	if err != nil {
-		return RetryableError{fmt.Sprintf("error converting token to kubeconfig: %s, secret: %#v", err.Error(), secret)}
+		return fmt.Errorf("error converting token to kubeconfig: %s, secret: %#v", err.Error(), secret)
 	}
+
 	secretData, err := clientcmd.Write(saConfig)
 	if err != nil {
-		return RetryableError{Message: err.Error()}
+		return err
 	}
 	destSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -121,13 +128,14 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 		},
 	}
 	if err := destClient.Create(e.Context, &destSecret); err != nil && !errors.IsAlreadyExists(err) {
-		return RetryableError{fmt.Sprintf("error creating secret. err: %s sa %s", err, e.ServiceAccount)}
+		return fmt.Errorf("error creating secret. err: %s sa %s", err, e.ServiceAccount)
 	}
 
 	// Create ClientConfig on destination cluster
 	if err := configapi.AddToScheme(destClient.Scheme()); err != nil {
-		return RetryableError{Message: err.Error()}
+		return err
 	}
+
 	destClientConfig := configapi.ClientConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      e.DestinationName,
@@ -141,7 +149,8 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 		},
 	}
 	if err := destClient.Create(e.Context, &destClientConfig); err != nil && !errors.IsAlreadyExists(err) {
-		return RetryableError{Message: err.Error()}
+		return err
 	}
+
 	return nil
 }
