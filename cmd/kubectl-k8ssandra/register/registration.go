@@ -101,7 +101,7 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 	if err != nil {
 		return RetryableError{Message: err.Error()}
 	}
-	saConfig, err := registration.TokenToKubeconfig(*secret, host)
+	saConfig, err := registration.TokenToKubeconfig(*secret, host, e.SourceContext)
 	if err != nil {
 		return RetryableError{fmt.Sprintf("error converting token to kubeconfig: %s, secret: %#v", err.Error(), secret)}
 	}
@@ -119,7 +119,7 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 			"kubeconfig": secretData,
 		},
 	}
-	if err := destClient.Create(e.Context, &destSecret); err != nil {
+	if err := destClient.Create(e.Context, &destSecret); err != nil && !errors.IsAlreadyExists(err) {
 		return RetryableError{fmt.Sprintf("error creating secret. err: %s sa %s", err, e.ServiceAccount)}
 	}
 
@@ -138,7 +138,7 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 			},
 		},
 	}
-	if err := destClient.Create(e.Context, &destClientConfig); err != nil {
+	if err := destClient.Create(e.Context, &destClientConfig); err != nil && !errors.IsAlreadyExists(err) {
 		return RetryableError{Message: err.Error()}
 	}
 	return nil
