@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/log"
+	"github.com/k8ssandra/k8ssandra-client/pkg/registration"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
@@ -63,7 +64,7 @@ func NewRegistrationExecutorFromRegisterClusterCmd(cmd cobra.Command) *Registrat
 	destName := cmd.Flag("destination-name").Value.String()
 	srcContext := cmd.Flag("source-context").Value.String()
 	if destName == "" {
-		destName = srcContext
+		destName = registration.CleanupForKubernetes(srcContext)
 	}
 	return &RegistrationExecutor{
 		SourceKubeconfig: cmd.Flag("source-kubeconfig").Value.String(),
