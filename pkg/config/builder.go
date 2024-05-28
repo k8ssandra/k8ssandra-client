@@ -494,7 +494,7 @@ func writeYaml(doc map[string]interface{}, targetFile string) error {
 
 func copyFiles(sourceDir, targetDir string) error {
 	// Copy the files we're not modifying
-	files := []string{"jvm-client.options", "jvm11-client.options", "jvm17-client.options", "logback.xml", "logback-tools.xml"}
+	files := []string{"jvm-clients.options", "jvm11-clients.options", "jvm17-clients.options", "logback.xml", "logback-tools.xml"}
 
 	for _, f := range files {
 		sourceFile := filepath.Join(sourceDir, f)
