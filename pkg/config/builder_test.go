@@ -437,7 +437,7 @@ func TestCopyFiles(t *testing.T) {
 
 	require.NoError(copyFiles(inputDir, tempDir))
 
-	// We should have tempDir/jvm11-client.options
-	_, err = os.Stat(filepath.Join(tempDir, "jvm11-client.options"))
+	// We should have tempDir/jvm11-clients.options
+	_, err = os.Stat(filepath.Join(tempDir, "jvm11-clients.options"))
 	require.NoError(err)
 }
