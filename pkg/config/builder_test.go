@@ -427,3 +427,17 @@ func readFileToLines(dir, filename string) ([]string, error) {
 
 	return lines, nil
 }
+
+func TestCopyFiles(t *testing.T) {
+	require := require.New(t)
+	inputDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+	require.NoError(err)
+	defer os.RemoveAll(tempDir)
+
+	require.NoError(copyFiles(inputDir, tempDir))
+
+	// We should have tempDir/jvm11-clients.options
+	_, err = os.Stat(filepath.Join(tempDir, "jvm11-clients.options"))
+	require.NoError(err)
+}
