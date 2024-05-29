@@ -14,7 +14,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	testDir, err = os.MkdirTemp("", "k8ssandra-operator-test")
+	testDir, err = os.MkdirTemp("", "k8ssandra-client-test")
 	if err != nil {
 		panic(err.Error())
 	}

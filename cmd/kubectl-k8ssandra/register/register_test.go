@@ -39,7 +39,7 @@ func TestRegister(t *testing.T) {
 			}
 		}
 		return err1 == nil && err2 == nil
-	}, time.Second*60, time.Second*2)
+	}, time.Second*6, time.Millisecond*100)
 
 	f1, err := os.Create(testDir + "/kubeconfig1")
 	require.NoError(err)
@@ -77,14 +77,14 @@ func TestRegister(t *testing.T) {
 	require.Eventually(func() bool {
 		res := ex.RegisterCluster()
 		return res == nil
-	}, time.Second*300, time.Second*1)
+	}, time.Second*6, time.Millisecond*100)
 
 	sourceSecret := &corev1.Secret{}
 	// Ensure secret created.
 	require.Eventually(func() bool {
 		err := client1.Get(ctx, types.NamespacedName{Name: "k8ssandra-operator-secret", Namespace: "source-namespace"}, sourceSecret)
 		return err == nil
-	}, time.Second*60, time.Second*5)
+	}, time.Second*6, time.Millisecond*100)
 
 	desiredSa := &corev1.ServiceAccount{}
 	require.NoError(client1.Get(
@@ -111,7 +111,8 @@ func TestRegister(t *testing.T) {
 			return false
 		}
 		return err == nil
-	}, time.Second*60, time.Second*2)
+	}, time.Second*6, time.Millisecond*100)
+
 	destKubeconfig := ClientConfigFromSecret(destSecret)
 	require.Equal(
 		sourceSecret.Data["ca.crt"],
