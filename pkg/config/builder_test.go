@@ -210,7 +210,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 
 	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
 
-	yamlOrigPath := filepath.Join(cassYamlDir, "cassandra.yaml")
+	yamlOrigPath := filepath.Join(cassYamlDir, "cassandra_latest.yaml")
 	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
 
 	yamlOrigFile, err := os.ReadFile(yamlOrigPath)
