@@ -27,6 +27,9 @@ const (
 
 	// docker-entrypoint.sh will copy the files from here, so we need all the outputs to target this
 	defaultOutputDir = "/config"
+
+	oldCassandraConfigName    = "cassandra.yaml"
+	latestCassandraConfigName = "cassandra_latest.yaml"
 )
 
 type Builder struct {
@@ -430,8 +433,14 @@ func readJvmServerOptions(path string) ([]string, error) {
 // cassandra.yaml related functions
 
 func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string) error {
+	targetConfigFileName := oldCassandraConfigName
+	// Verify if we should use cassandra_latest.yaml (5.0 and newer) or cassandra.yaml (4.1 and older)
+	if _, err := os.Stat(filepath.Join(sourceDir, latestCassandraConfigName)); err == nil {
+		targetConfigFileName = latestCassandraConfigName
+	}
+
 	// Read the base file
-	yamlPath := filepath.Join(sourceDir, "cassandra.yaml")
+	yamlPath := filepath.Join(sourceDir, targetConfigFileName)
 
 	yamlFile, err := os.ReadFile(yamlPath)
 	if err != nil {

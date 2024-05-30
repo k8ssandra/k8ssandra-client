@@ -57,6 +57,28 @@ var existingConfig = `
 }
 `
 
+var cass50Config = `
+{
+	"cassandra-yaml": {
+		"authenticator": {
+			"class_name": "org.apache.cassandra.auth.PasswordAuthenticator"
+		},
+		"authorizer": "org.apache.cassandra.auth.CassandraAuthorizer",
+		"role_manager": "CassandraRoleManager"
+	},
+	"cluster-info": {
+		"name": "test",
+		"seeds": "test-seed-service,test-dc-additional-seed-service"
+	},
+	"datacenter-info": {
+		"graph-enabled": 0,
+		"name": "datacenter1",
+		"solr-enabled": 0,
+		"spark-enabled": 0
+	}
+}
+`
+
 var numericConfig = `
 {
 	"jvm-server-options": {
@@ -188,7 +210,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 
 	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
 
-	yamlOrigPath := filepath.Join(cassYamlDir, "cassandra.yaml")
+	yamlOrigPath := filepath.Join(cassYamlDir, "cassandra_latest.yaml")
 	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
 
 	yamlOrigFile, err := os.ReadFile(yamlOrigPath)
@@ -227,6 +249,118 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.Equal("CassandraRoleManager", cassandraYaml["role_manager"])
 	require.Equal("256", cassandraYaml["num_tokens"])
 	require.Equal(false, cassandraYaml["start_rpc"])
+}
+
+func TestCassandraBaseConfigFilePick(t *testing.T) {
+	require := require.New(t)
+	testFilesPath := filepath.Join(envtest.RootDir(), "testfiles")
+
+	// Create input directories and copy correct files to them
+	inputDirOld, err := os.MkdirTemp("", "cassandra-yaml")
+	require.NoError(err)
+
+	inputDirNew, err := os.MkdirTemp("", "cassandra-yaml")
+	require.NoError(err)
+
+	t.Cleanup(func() {
+		os.RemoveAll(inputDirOld)
+		os.RemoveAll(inputDirNew)
+	})
+
+	// Copy the correct files to the directories
+	require.NoError(copyFile(filepath.Join(testFilesPath, "cassandra.yaml"), filepath.Join(inputDirOld, "cassandra.yaml")))
+	require.NoError(copyFile(filepath.Join(testFilesPath, "cassandra.yaml"), filepath.Join(inputDirNew, "cassandra.yaml")))
+	require.NoError(copyFile(filepath.Join(testFilesPath, "cassandra_latest.yaml"), filepath.Join(inputDirNew, "cassandra_latest.yaml")))
+
+	// Then process both..
+	outputDirOld, err := os.MkdirTemp("", "cassandra-yaml")
+	require.NoError(err)
+	outputDirNew, err := os.MkdirTemp("", "cassandra-yaml")
+	require.NoError(err)
+
+	t.Cleanup(func() {
+		os.RemoveAll(outputDirOld)
+		os.RemoveAll(outputDirNew)
+	})
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", existingConfig)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+	t.Setenv("POD_IP", "172.27.0.1")
+	t.Setenv("RACK_NAME", "r1")
+	nodeInfo, err := parseNodeInfo()
+	require.NoError(err)
+	require.NotNil(nodeInfo)
+
+	require.NoError(createCassandraYaml(configInput, nodeInfo, inputDirOld, outputDirOld))
+	require.NoError(createCassandraYaml(configInput, nodeInfo, inputDirNew, outputDirNew))
+
+	// Verify only cassandra.yaml is created to destination
+	entriesOld, err := os.ReadDir(outputDirOld)
+	require.NoError(err)
+	require.Len(entriesOld, 1)
+	require.Equal("cassandra.yaml", entriesOld[0].Name())
+
+	entriesNew, err := os.ReadDir(outputDirNew)
+	require.NoError(err)
+	require.Len(entriesNew, 1)
+	require.Equal("cassandra.yaml", entriesNew[0].Name())
+
+	// Verify content differences (that we actually used the _latest when it's present)
+	yamlOldOutput := filepath.Join(outputDirOld, "cassandra.yaml")
+	yamlNewOutput := filepath.Join(outputDirNew, "cassandra.yaml")
+
+	yamlOldFile, err := os.ReadFile(yamlOldOutput)
+	require.NoError(err)
+
+	yamlNewFile, err := os.ReadFile(yamlNewOutput)
+	require.NoError(err)
+
+	cassandraYamlOld := make(map[string]interface{})
+	require.NoError(yaml.Unmarshal(yamlOldFile, cassandraYamlOld))
+
+	cassandraYamlNew := make(map[string]interface{})
+	require.NoError(yaml.Unmarshal(yamlNewFile, cassandraYamlNew))
+
+	require.Equal("heap_buffers", cassandraYamlOld["memtable_allocation_type"])
+	require.Equal("offheap_objects", cassandraYamlNew["memtable_allocation_type"])
+}
+
+func TestCassandraYamlSubPath(t *testing.T) {
+	require := require.New(t)
+	cassYamlDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+	require.NoError(err)
+
+	defer os.RemoveAll(tempDir)
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", cass50Config)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+	t.Setenv("POD_IP", "172.27.0.1")
+	t.Setenv("RACK_NAME", "r1")
+	nodeInfo, err := parseNodeInfo()
+	require.NoError(err)
+	require.NotNil(nodeInfo)
+
+	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
+
+	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
+
+	yamlFile, err := os.ReadFile(yamlPath)
+	require.NoError(err)
+
+	// Unmarshal, Marshal to remove all comments (and some fields if necessary)
+	cassandraYaml := make(map[string]interface{})
+	require.NoError(yaml.Unmarshal(yamlFile, cassandraYaml))
+
+	authenticator := cassandraYaml["authenticator"]
+	authenticatorStruct := authenticator.(map[string]interface{})
+	require.Equal("org.apache.cassandra.auth.PasswordAuthenticator", authenticatorStruct["class_name"])
 }
 
 func TestRackProperties(t *testing.T) {
