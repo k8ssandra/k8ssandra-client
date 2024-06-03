@@ -11,6 +11,7 @@ import (
 	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
 	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	"k8s.io/utils/ptr"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -36,6 +37,8 @@ type Environment struct {
 	env           *envtest.Environment
 	cancelManager context.CancelFunc
 	Context       context.Context
+	Kubeconfig    string
+	KindCluster   KindManager
 }
 
 func NewEnvironment(ctx context.Context) *Environment {
@@ -49,6 +52,29 @@ func NewEnvironment(ctx context.Context) *Environment {
 	ctx, cancel := context.WithCancel(ctx)
 	env.Context = ctx
 	env.cancelManager = cancel
+	return env
+}
+
+func NewKindEnvironment(ctx context.Context, cluster KindManager) *Environment {
+	err := cluster.CreateKindCluster()
+	if err != nil {
+		panic(err)
+	}
+	env := &Environment{}
+	env.env = &envtest.Environment{
+		CRDDirectoryPaths: []string{
+			filepath.Join(RootDir(), "testfiles", "crd"),
+		},
+		UseExistingCluster:    ptr.To(true),
+		ErrorIfCRDPathMissing: true,
+		Config:                cluster.RestConfig,
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	env.Context = ctx
+	env.cancelManager = cancel
+	env.Kubeconfig = cluster.KubeconfigLocation.Name()
+	env.env.Config = cluster.RestConfig
+	env.KindCluster = cluster
 	return env
 }
 

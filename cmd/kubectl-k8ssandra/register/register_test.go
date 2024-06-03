@@ -2,8 +2,6 @@ package register
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -11,7 +9,9 @@ import (
 	configapi "github.com/k8ssandra/k8ssandra-operator/apis/config/v1beta1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,24 +19,35 @@ import (
 
 func TestRegister(t *testing.T) {
 	require := require.New(t)
-	client1 := (*multiEnv)[0].GetClientInNamespace("source-namespace")
-	client2 := (*multiEnv)[1].GetClientInNamespace("dest-namespace")
-	require.NoError(client1.Create((*multiEnv)[0].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}}))
-	require.NoError(client2.Create((*multiEnv)[1].Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}}))
+	client1, _ := client.New((*multiEnv)[0].RestConfig(), client.Options{})
+	client2, _ := client.New((*multiEnv)[1].RestConfig(), client.Options{})
+	ctx := context.Background()
+	require.Eventually(func() bool {
+		// It seems that at first, these clients may not be ready for use. By the time they can create a namespace they are known ready.
+		err1 := client1.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "source-namespace"}})
+		if err1 != nil {
+			t.Log(err1)
+			if k8serrors.IsAlreadyExists(err1) {
+				err1 = nil
+			}
+		}
+		err2 := client2.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "dest-namespace"}})
+		if err2 != nil {
+			t.Log(err2)
+			if k8serrors.IsAlreadyExists(err2) {
+				err2 = nil
+			}
+		}
+		return err1 == nil && err2 == nil
+	}, time.Second*6, time.Millisecond*100)
 
-	testDir, err := os.MkdirTemp("", "k8ssandra-operator-test-****")
-	require.NoError(err)
-	t.Cleanup(func() {
-		require.NoError(os.RemoveAll(testDir))
-	})
-
-	kc1, err := (*multiEnv)[0].GetKubeconfig()
-	require.NoError(err)
 	f1, err := os.Create(testDir + "/kubeconfig1")
 	require.NoError(err)
 	t.Cleanup(func() {
 		require.NoError(f1.Close())
 	})
+	kc1, err := (*multiEnv)[0].GetKubeconfig()
+	require.NoError(err)
 	_, err = f1.Write(kc1)
 	require.NoError(err)
 
@@ -59,54 +70,27 @@ func TestRegister(t *testing.T) {
 		SourceNamespace:  "source-namespace",
 		DestNamespace:    "dest-namespace",
 		ServiceAccount:   "k8ssandra-operator",
-		Context:          context.TODO(),
+		Context:          ctx,
 		DestinationName:  "test-destination",
 	}
-	ctx := context.Background()
-
+	// Continue reconciliation
 	require.Eventually(func() bool {
-		if err := ex.RegisterCluster(); err != nil {
-			if errors.Is(err, NonRecoverableError{}) {
-				require.FailNow(fmt.Sprintf("Registration failed: %s", err.Error()))
-			}
-			if err.Error() == "no secret found for service account k8ssandra-operator" {
-				return true
-			}
-			return false
-		}
-		return true
-	}, time.Second*5, time.Millisecond*100)
+		res := ex.RegisterCluster()
+		return res == nil
+	}, time.Second*6, time.Millisecond*100)
 
-	// This relies on a controller that is not running in the envtest.
-
-	desiredSaSecret := &corev1.Secret{}
-	require.NoError(client1.Get(context.Background(), client.ObjectKey{Name: "k8ssandra-operator-secret", Namespace: "source-namespace"}, desiredSaSecret))
-	patch := client.MergeFrom(desiredSaSecret.DeepCopy())
-	desiredSaSecret.Data = map[string][]byte{
-		"token":  []byte("test-token"),
-		"ca.crt": []byte("test-ca"),
-	}
-	require.NoError(client1.Patch(ctx, desiredSaSecret, patch))
+	sourceSecret := &corev1.Secret{}
+	// Ensure secret created.
+	require.Eventually(func() bool {
+		err := client1.Get(ctx, types.NamespacedName{Name: "k8ssandra-operator-secret", Namespace: "source-namespace"}, sourceSecret)
+		return err == nil
+	}, time.Second*6, time.Millisecond*100)
 
 	desiredSa := &corev1.ServiceAccount{}
 	require.NoError(client1.Get(
 		context.Background(),
 		client.ObjectKey{Name: "k8ssandra-operator", Namespace: "source-namespace"},
 		desiredSa))
-
-	patch = client.MergeFrom(desiredSa.DeepCopy())
-	desiredSa.Secrets = []corev1.ObjectReference{
-		{
-			Name: "k8ssandra-operator-secret",
-		},
-	}
-	require.NoError(client1.Patch(ctx, desiredSa, patch))
-
-	// Continue reconciliation
-
-	require.Eventually(func() bool {
-		return ex.RegisterCluster() == nil
-	}, time.Second*3, time.Millisecond*100)
 
 	if err := configapi.AddToScheme(client2.Scheme()); err != nil {
 		require.NoError(err)
@@ -131,11 +115,11 @@ func TestRegister(t *testing.T) {
 
 	destKubeconfig := ClientConfigFromSecret(destSecret)
 	require.Equal(
-		desiredSaSecret.Data["ca.crt"],
+		sourceSecret.Data["ca.crt"],
 		destKubeconfig.Clusters["test-destination"].CertificateAuthorityData)
 
 	require.Equal(
-		string(desiredSaSecret.Data["token"]),
+		string(sourceSecret.Data["token"]),
 		destKubeconfig.AuthInfos["test-destination"].Token)
 }
 
