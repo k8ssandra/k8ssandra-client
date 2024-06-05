@@ -12,7 +12,7 @@ import (
 // NewManagementClient returns a new instance for management-api go-client
 func NewManagementClient(ctx context.Context, client client.Client, namespace, datacenter string) (httphelper.NodeMgmtClient, error) {
 	manager := cassdcutil.NewManager(client)
-	dc, err := manager.CassandraDatacenter(ctx, namespace, datacenter)
+	dc, err := manager.CassandraDatacenter(ctx, datacenter, namespace)
 	if err != nil {
 		return httphelper.NodeMgmtClient{}, err
 	}
