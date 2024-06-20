@@ -28,7 +28,7 @@ func RunMulti(m *testing.M, setupFunc func(e *MultiK8sEnvironment), numClusters 
 	return exitCode
 }
 
-func RunMultiKind(m *testing.M, setupFunc func(e *MultiK8sEnvironment), topology []int, testDir string) (code int) {
+func RunMultiKind(setupFunc func(e *MultiK8sEnvironment), topology []int, testDir string) (deferFunc func()) {
 	e := make(MultiK8sEnvironment, len(topology))
 	ctx := ctrl.SetupSignalHandler()
 	var wg sync.WaitGroup
@@ -46,7 +46,10 @@ func RunMultiKind(m *testing.M, setupFunc func(e *MultiK8sEnvironment), topology
 		}(i)
 	}
 	wg.Wait()
-	defer func() {
+
+	setupFunc(&e)
+	return func() {
+		var wg sync.WaitGroup
 		for i := 0; i < len(topology); i++ {
 			wg.Add(1)
 			go func(i int) {
@@ -58,9 +61,5 @@ func RunMultiKind(m *testing.M, setupFunc func(e *MultiK8sEnvironment), topology
 			}(i)
 		}
 		wg.Wait()
-	}()
-
-	setupFunc(&e)
-	exitCode := m.Run()
-	return exitCode
+	}
 }

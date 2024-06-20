@@ -52,10 +52,7 @@ func getDefaultServiceAccount(saName, saNamespace string) *corev1.ServiceAccount
 }
 
 func (e *RegistrationExecutor) RegisterCluster() error {
-	log.Printf("Registering cluster from %s Context: %s to %s Context: %s",
-		registration.GetKubeconfigFileLocation(e.SourceKubeconfig), e.SourceContext,
-		registration.GetKubeconfigFileLocation(e.DestKubeconfig), e.DestContext,
-	)
+	log.Printf("Registering cluster from context: %s to context: %s", e.SourceContext, e.DestContext)
 
 	if e.SourceContext == e.DestContext && e.SourceKubeconfig == e.DestKubeconfig {
 		return NonRecoverable("source and destination context and kubeconfig are the same, you should not register the same cluster to itself. Reference it by leaving the k8sContext field blank instead")

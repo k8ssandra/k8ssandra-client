@@ -125,13 +125,7 @@ func (e *Environment) Start() {
 		panic(err)
 	}
 
-	//+kubebuilder:scaffold:scheme
-
 	e.client = k8sClient
-	// e.Kubeconfig, err = CreateKubeconfigFileForRestConfig(e.env.Config)
-	// if err != nil {
-	// 	panic(err)
-	// }
 }
 
 func (e *Environment) Stop() {

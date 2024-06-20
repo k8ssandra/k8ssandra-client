@@ -12,7 +12,11 @@ import (
 )
 
 func GetClient(configFileLocation string, contextName string) (client.Client, error) {
-	clientConfig, err := clientcmd.LoadFromFile(GetKubeconfigFileLocation(configFileLocation))
+	path, err := GetKubeconfigFileLocation(configFileLocation)
+	if err != nil {
+		return nil, err
+	}
+	clientConfig, err := clientcmd.LoadFromFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -20,14 +24,14 @@ func GetClient(configFileLocation string, contextName string) (client.Client, er
 	if contextName == "" {
 		restConfig, err := clientcmd.NewDefaultClientConfig(*clientConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		return client.New(restConfig, client.Options{})
 	}
 
 	context, found := clientConfig.Contexts[contextName]
 	if !found {
-		panic(errors.New(fmt.Sprint("context not found in supplied kubeconfig ", "contextName: ", contextName, " configFileLocation: ", GetKubeconfigFileLocation(configFileLocation))))
+		return nil, errors.New(fmt.Sprint("context not found in supplied kubeconfig ", "contextName: ", contextName, " configFileLocation: ", path))
 	}
 	overrides := &clientcmd.ConfigOverrides{
 		Context:     *context,
@@ -39,27 +43,32 @@ func GetClient(configFileLocation string, contextName string) (client.Client, er
 	restConfig, err = cConfig.ClientConfig()
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+
 	return client.New(restConfig, client.Options{})
 }
 
-func GetKubeconfigFileLocation(location string) string {
+func GetKubeconfigFileLocation(location string) (string, error) {
 	if location != "" {
-		return location
+		return location, nil
 	} else if kubeconfigEnvVar, found := os.LookupEnv("KUBECONFIG"); found {
-		return kubeconfigEnvVar
+		return kubeconfigEnvVar, nil
 	} else {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
-			panic(err)
+			return "", err
 		}
-		return filepath.Join(homeDir, ".kube", "config")
+		return filepath.Join(homeDir, ".kube", "config"), nil
 	}
 }
 
 func KubeconfigToHost(configFileLocation string, contextName string) (string, error) {
-	clientConfig, err := clientcmd.LoadFromFile(GetKubeconfigFileLocation(configFileLocation))
+	path, err := GetKubeconfigFileLocation(configFileLocation)
+	if err != nil {
+		return "", err
+	}
+	clientConfig, err := clientcmd.LoadFromFile(path)
 	if err != nil {
 		return "", err
 	}
@@ -73,7 +82,7 @@ func KubeconfigToHost(configFileLocation string, contextName string) (string, er
 
 	context, found := clientConfig.Contexts[contextName]
 	if !found {
-		panic(errors.New(fmt.Sprint("context not found in supplied kubeconfig ", "contextName: ", contextName, " configFileLocation: ", GetKubeconfigFileLocation(configFileLocation))))
+		return "", errors.New(fmt.Sprint("context not found in supplied kubeconfig ", "contextName: ", contextName, " configFileLocation: ", path))
 	}
 	return clientConfig.Clusters[context.Cluster].Server, nil
 }

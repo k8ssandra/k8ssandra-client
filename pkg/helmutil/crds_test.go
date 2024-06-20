@@ -16,6 +16,10 @@ import (
 )
 
 func TestUpgradingCRDs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	require := require.New(t)
 	chartNames := []string{"cass-operator"}
 	for _, chartName := range chartNames {

@@ -18,6 +18,13 @@ import (
 )
 
 func TestRegister(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	deferFunc := startKind()
+	defer deferFunc()
+
 	require := require.New(t)
 	client1, _ := client.New((*multiEnv)[0].RestConfig(), client.Options{})
 	client2, _ := client.New((*multiEnv)[1].RestConfig(), client.Options{})
@@ -113,7 +120,8 @@ func TestRegister(t *testing.T) {
 		return err == nil
 	}, time.Second*6, time.Millisecond*100)
 
-	destKubeconfig := ClientConfigFromSecret(destSecret)
+	destKubeconfig, err := ClientConfigFromSecret(destSecret)
+	require.NoError(err)
 	require.Equal(
 		sourceSecret.Data["ca.crt"],
 		destKubeconfig.Clusters["test-destination"].CertificateAuthorityData)
@@ -123,10 +131,10 @@ func TestRegister(t *testing.T) {
 		destKubeconfig.AuthInfos["test-destination"].Token)
 }
 
-func ClientConfigFromSecret(s *corev1.Secret) clientcmdapi.Config {
+func ClientConfigFromSecret(s *corev1.Secret) (clientcmdapi.Config, error) {
 	out, err := clientcmd.Load(s.Data["kubeconfig"])
 	if err != nil {
-		panic(err)
+		return clientcmdapi.Config{}, err
 	}
-	return *out
+	return *out, nil
 }
