@@ -31,6 +31,7 @@ type options struct {
 	chartRepo    string
 	repoURL      string
 	download     bool
+	chartList    []string
 }
 
 func newOptions(streams genericclioptions.IOStreams) *options {
@@ -49,13 +50,17 @@ func NewUpgradeCmd(streams genericclioptions.IOStreams) *cobra.Command {
 		Short:        "upgrade CRDs from chart to target version",
 		Example:      fmt.Sprintf(upgraderExample, "kubectl k8ssandra helm crds"),
 		SilenceUsage: true,
-		RunE: func(c *cobra.Command, args []string) error {
+		PreRunE: func(c *cobra.Command, args []string) error {
 			if err := o.Complete(c, args); err != nil {
 				return err
 			}
 			if err := o.Validate(); err != nil {
 				return err
 			}
+
+			return nil
+		},
+		RunE: func(c *cobra.Command, args []string) error {
 			if err := o.Run(); err != nil {
 				log.Error("Error upgrading CustomResourceDefinitions", "error", err)
 				return err
@@ -70,8 +75,17 @@ func NewUpgradeCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	fl.StringVar(&o.chartVersion, "chartVersion", "", "chartVersion to upgrade to")
 	fl.StringVar(&o.chartRepo, "chartRepo", "", "optional chart repository name to override the default (k8ssandra)")
 	fl.StringVar(&o.repoURL, "repoURL", "", "optional chart repository url to override the default (helm.k8ssandra.io)")
+	fl.StringSliceVar(&o.chartList, "charts", []string{}, "optional list of dependency charts to upgrade, default is just the main chart. Use \"_\" to update all the subcharts.")
 	fl.BoolVar(&o.download, "download", false, "only download the chart")
 	o.configFlags.AddFlags(fl)
+
+	if err := cmd.MarkFlagRequired("chartName"); err != nil {
+		panic(err)
+	}
+
+	if err := cmd.MarkFlagRequired("chartVersion"); err != nil {
+		panic(err)
+	}
 
 	return cmd
 }
@@ -79,7 +93,7 @@ func NewUpgradeCmd(streams genericclioptions.IOStreams) *cobra.Command {
 // Complete parses the arguments and necessary flags to options
 func (c *options) Complete(cmd *cobra.Command, args []string) error {
 	var err error
-	if c.chartName == "" && c.chartVersion == "" {
+	if c.chartName == "" || c.chartVersion == "" {
 		return errNotEnoughParameters
 	}
 
@@ -118,7 +132,7 @@ func (c *options) Run() error {
 
 	ctx := context.Background()
 
-	upgrader, err := helmutil.NewUpgrader(kubeClient, c.chartRepo, c.repoURL, c.chartName)
+	upgrader, err := helmutil.NewUpgrader(kubeClient, c.chartRepo, c.repoURL, c.chartName, c.chartList)
 	if err != nil {
 		return err
 	}
