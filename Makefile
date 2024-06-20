@@ -16,6 +16,8 @@ SHELL = /usr/bin/env bash -o pipefail
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.x
 
+GO_FLAGS ?= -v
+
 .PHONY: all
 all: build
 
@@ -46,7 +48,11 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: fmt vet lint envtest ## Run tests
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -v ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $(GO_FLAGS) ./... -coverprofile cover.out
+
+.PHONY: test-short
+test-short: fmt vet lint envtest ## Run tests
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -short $(GO_FLAGS) ./... -coverprofile cover.out
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint against code

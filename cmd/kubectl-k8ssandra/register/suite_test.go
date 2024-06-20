@@ -2,7 +2,6 @@ package register
 
 import (
 	"os"
-	"testing"
 
 	"github.com/k8ssandra/k8ssandra-client/internal/envtest"
 )
@@ -13,12 +12,12 @@ var (
 	err      error
 )
 
-func TestMain(m *testing.M) {
+func startKind() (deferFunc func()) {
 	testDir, err = os.MkdirTemp("", "k8ssandra-client-test")
 	if err != nil {
 		panic(err.Error())
 	}
-	os.Exit(envtest.RunMultiKind(m, func(e *envtest.MultiK8sEnvironment) {
+	return envtest.RunMultiKind(func(e *envtest.MultiK8sEnvironment) {
 		multiEnv = e
-	}, []int{1, 1}, testDir))
+	}, []int{1, 1}, testDir)
 }
