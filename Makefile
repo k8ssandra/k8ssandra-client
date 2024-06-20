@@ -50,7 +50,7 @@ vet: ## Run go vet against code.
 test: fmt vet lint envtest ## Run tests
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $(GO_FLAGS) ./... -coverprofile cover.out
 
-.PHONE: test-short
+.PHONY: test-short
 test-short: fmt vet lint envtest ## Run tests
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -short $(GO_FLAGS) ./... -coverprofile cover.out
 
