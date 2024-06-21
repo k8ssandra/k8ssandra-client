@@ -28,7 +28,7 @@ func TestUpgradingCRDs(t *testing.T) {
 		require.NoError(cleanCache("k8ssandra", chartName))
 
 		// creating new upgrader
-		u, err := helmutil.NewUpgrader(kubeClient, helmutil.K8ssandraRepoName, helmutil.StableK8ssandraRepoURL, chartName)
+		u, err := helmutil.NewUpgrader(kubeClient, helmutil.K8ssandraRepoName, helmutil.StableK8ssandraRepoURL, chartName, []string{})
 		require.NoError(err)
 
 		crds, err := u.Upgrade(context.TODO(), "0.42.0")

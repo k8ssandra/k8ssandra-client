@@ -20,21 +20,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	AllSubCharts = "_"
+)
+
 // Upgrader is a utility to update the CRDs in a helm chart's pre-upgrade hook
 type Upgrader struct {
 	client    client.Client
 	repoName  string
 	repoURL   string
 	chartName string
+	subCharts []string
 }
 
 // NewUpgrader returns a new Upgrader client
-func NewUpgrader(c client.Client, repoName, repoURL, chartName string) (*Upgrader, error) {
+func NewUpgrader(c client.Client, repoName, repoURL, chartName string, subCharts []string) (*Upgrader, error) {
 	return &Upgrader{
 		client:    c,
 		repoName:  repoName,
 		repoURL:   repoURL,
 		chartName: chartName,
+		subCharts: subCharts,
 	}, nil
 }
 
@@ -73,12 +79,11 @@ func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstruct
 	crds := make([]unstructured.Unstructured, 0)
 
 	// For each dir under the charts subdir, check the "crds/"
-	paths, _ := findCRDDirs(chartDir)
+	paths, _ := findCRDDirs(chartDir, u.subCharts)
 
 	for _, path := range paths {
 		log.Debug("Processing CustomResourceDefinition directory", "path", path)
-		err = parseChartCRDs(&crds, path)
-		if err != nil {
+		if err := parseChartCRDs(&crds, path); err != nil {
 			return nil, err
 		}
 	}
@@ -106,18 +111,47 @@ func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstruct
 	return crds, err
 }
 
-func findCRDDirs(chartDir string) ([]string, error) {
+func findCRDDirs(chartDir string, subCharts []string) ([]string, error) {
+	chartsList := make(map[string]struct{})
+	for _, chart := range subCharts {
+		chartsList[chart] = struct{}{}
+	}
+
+	chartFilter := func(path string, info os.FileInfo) bool {
+		if !info.IsDir() || filepath.Base(path) != "crds" {
+			return false
+		}
+
+		chartParts := strings.Split(filepath.Clean(path), string(os.PathSeparator))
+		chartName := chartParts[len(chartParts)-2]
+		subChart := false
+		if len(chartParts) > 3 {
+			subChart = chartParts[len(chartParts)-3] == "charts"
+		}
+
+		if !subChart {
+			return true
+		}
+
+		if _, found := chartsList[AllSubCharts]; found {
+			return true
+		}
+
+		if _, found := chartsList[chartName]; found {
+			return true
+		}
+
+		return false
+	}
 	dirs := make([]string, 0)
 	err := filepath.Walk(chartDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
-			if strings.HasSuffix(path, "crds") {
-				dirs = append(dirs, path)
-			}
-			return nil
+		if chartFilter(path, info) {
+			dirs = append(dirs, path)
 		}
+
 		return nil
 	})
 	return dirs, err
