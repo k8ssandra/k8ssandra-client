@@ -18,15 +18,17 @@ import (
 )
 
 type RegistrationExecutor struct {
-	DestinationName  string
-	SourceKubeconfig string
-	DestKubeconfig   string
-	SourceContext    string
-	DestContext      string
-	SourceNamespace  string
-	DestNamespace    string
-	ServiceAccount   string
-	Context          context.Context
+	DestinationName    string
+	SourceKubeconfig   string
+	DestKubeconfig     string
+	SourceContext      string
+	DestContext        string
+	SourceNamespace    string
+	DestNamespace      string
+	ServiceAccount     string
+	overrideSourceIP   string
+	overrideSourcePort string
+	Context            context.Context
 }
 
 func getDefaultSecret(saNamespace, saName string) *corev1.Secret {
@@ -101,7 +103,7 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 	}
 
 	// Create Secret on destination cluster
-	host, err := registration.KubeconfigToHost(e.SourceKubeconfig, e.SourceContext)
+	host, err := registration.KubeconfigToHost(e.SourceKubeconfig, e.SourceContext, e.overrideSourceIP, e.overrideSourcePort)
 	if err != nil {
 		return err
 	}

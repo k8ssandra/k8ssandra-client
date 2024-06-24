@@ -63,12 +63,17 @@ func GetKubeconfigFileLocation(location string) (string, error) {
 	}
 }
 
-func KubeconfigToHost(configFileLocation string, contextName string) (string, error) {
+func KubeconfigToHost(configFileLocation string, contextName string, overrideSourceIP string, overrideSourcePort string) (string, error) {
+	if overrideSourceIP != "" && overrideSourcePort != "" {
+		return fmt.Sprintf("https://%s:%s", overrideSourceIP, overrideSourcePort), nil
+	}
 	path, err := GetKubeconfigFileLocation(configFileLocation)
 	if err != nil {
 		return "", err
 	}
+
 	clientConfig, err := clientcmd.LoadFromFile(path)
+
 	if err != nil {
 		return "", err
 	}
