@@ -26,8 +26,8 @@ type RegistrationExecutor struct {
 	SourceNamespace    string
 	DestNamespace      string
 	ServiceAccount     string
-	overrideSourceIP   string
-	overrideSourcePort string
+	OverrideSourceIP   string
+	OverrideSourcePort string
 	Context            context.Context
 }
 
@@ -103,7 +103,7 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 	}
 
 	// Create Secret on destination cluster
-	host, err := registration.KubeconfigToHost(e.SourceKubeconfig, e.SourceContext, e.overrideSourceIP, e.overrideSourcePort)
+	host, err := registration.KubeconfigToHost(e.SourceKubeconfig, e.SourceContext, e.OverrideSourceIP, e.OverrideSourcePort)
 	if err != nil {
 		return err
 	}
