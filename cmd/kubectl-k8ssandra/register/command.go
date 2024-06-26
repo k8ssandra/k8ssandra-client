@@ -79,8 +79,8 @@ func NewRegistrationExecutorFromRegisterClusterCmd(cmd cobra.Command) *Registrat
 		SourceNamespace:    cmd.Flag("source-namespace").Value.String(),
 		DestNamespace:      cmd.Flag("dest-namespace").Value.String(),
 		ServiceAccount:     cmd.Flag("serviceaccount-name").Value.String(),
-		OverrideSourceIP:   cmd.Flag("oride-src-ip").Value.String(),
-		OverrideSourcePort: cmd.Flag("oride-src-port").Value.String(),
+		OverrideSourceIP:   cmd.Flag("override-src-ip").Value.String(),
+		OverrideSourcePort: cmd.Flag("override-src-port").Value.String(),
 		Context:            cmd.Context(),
 		DestinationName:    destName,
 	}
