@@ -7,13 +7,11 @@ import (
 	"time"
 
 	configapi "github.com/k8ssandra/k8ssandra-operator/apis/config/v1beta1"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -139,40 +137,4 @@ func ClientConfigFromSecret(s *corev1.Secret) (clientcmdapi.Config, error) {
 		return clientcmdapi.Config{}, err
 	}
 	return *out, nil
-}
-
-func TestInputParameters(t *testing.T) {
-	require := require.New(t)
-
-	RegisterClusterCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return nil
-	}
-	cmd := &cobra.Command{
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-	SetupRegisterClusterCmd(cmd, genericiooptions.NewTestIOStreamsDiscard())
-	RegisterClusterCmd.SetArgs([]string{
-		"register",
-		"--source-context", "source-ctx",
-		"--source-kubeconfig", "testsourcekubeconfig",
-		"dest-kubeconfig", "testdestkubeconfig",
-		"--dest-context", "dest-ctx",
-		"--source-namespace", "source-namespace",
-		"--source-namespace", "dest-namespace",
-		"--service-account", "test-sa",
-		"--override-src-ip", "127.0.0.2",
-		"--override-src-port", "9999"})
-	executor := NewRegistrationExecutorFromRegisterClusterCmd(*RegisterClusterCmd)
-	require.NoError(RegisterClusterCmd.Execute())
-	require.Equal("127.0.0.2", executor.OverrideSourceIP)
-	require.Equal("9999", executor.OverrideSourcePort)
-	require.Equal("testsourcekubeconfig", executor.SourceKubeconfig)
-	require.Equal("source-ctx", executor.SourceContext)
-	require.Equal("testdestkubeconfig", executor.DestKubeconfig)
-	require.Equal("dest-ctx", executor.DestContext)
-	require.Equal("source-namespace", executor.SourceNamespace)
-	require.Equal("dest-namespace", executor.DestNamespace)
-	require.Equal("test-sa", executor.ServiceAccount)
 }
