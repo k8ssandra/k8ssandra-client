@@ -13,12 +13,12 @@ func TestInputParameters(t *testing.T) {
 
 	var executor *RegistrationExecutor
 
-	RegisterClusterCmd.RunE = func(cmd *cobra.Command, args []string) error {
+	cmd := &cobra.Command{}
+	SetupRegisterClusterCmd(cmd, genericiooptions.NewTestIOStreamsDiscard())
+	cmd.Commands()[0].RunE = func(cmd *cobra.Command, args []string) error {
 		executor = NewRegistrationExecutorFromRegisterClusterCmd(*cmd)
 		return nil
 	}
-	cmd := &cobra.Command{}
-	SetupRegisterClusterCmd(cmd, genericiooptions.NewTestIOStreamsDiscard())
 	cmd.Root().SetArgs([]string{
 		"register",
 		"--source-context", "source-ctx",
@@ -47,12 +47,13 @@ func TestInputParameters(t *testing.T) {
 func TestIncorrectParameters(t *testing.T) {
 	require := require.New(t)
 
-	RegisterClusterCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return nil
-	}
 	cmd := &cobra.Command{}
 	cmd.SilenceUsage = true
 	SetupRegisterClusterCmd(cmd, genericiooptions.NewTestIOStreamsDiscard())
+	cmd.Commands()[0].RunE = func(cmd *cobra.Command, args []string) error {
+		return nil
+	}
+
 	cmd.Root().SetArgs([]string{
 		"register",
 		"--service-account", "test-sa",
