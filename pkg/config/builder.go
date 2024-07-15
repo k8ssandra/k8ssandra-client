@@ -360,10 +360,11 @@ func getGCOptions(gcName string, jvmMajor int) []string {
 	case "Shenandoah":
 		return []string{"-XX:+UseShenandoahGC"}
 	case "ZGC":
-		zgcOpts := []string{"-XX:+UseZGC"}
+		zgcOpts := make([]string, 0, 1)
 		if jvmMajor < 17 {
 			zgcOpts = append(zgcOpts, "-XX:+UnlockExperimentalVMOptions")
 		}
+		zgcOpts = append(zgcOpts, "-XX:+UseZGC")
 		return zgcOpts
 	default:
 		// User needs to define all the settings
