@@ -30,8 +30,8 @@ func SetupRegisterClusterCmd(cmd *cobra.Command, streams genericclioptions.IOStr
 	RegisterClusterCmd.Flags().String("dest-namespace", "k8ssandra-operator", "namespace where secret and clientConfig will be created on destination cluster")
 	RegisterClusterCmd.Flags().String("serviceaccount-name", "k8ssandra-operator", "serviceaccount name for destination cluster")
 	RegisterClusterCmd.Flags().String("destination-name", "", "name for remote clientConfig and secret on destination cluster")
-	RegisterClusterCmd.Flags().String("oride-src-ip", "", "override source IP for when you need to specify a different IP for the source cluster than is contained in kubeconfig")
-	RegisterClusterCmd.Flags().String("oride-src-port", "", "override source port for when you need to specify a different port for the source cluster than is contained in src kubeconfig")
+	RegisterClusterCmd.Flags().String("override-src-ip", "", "override source IP for when you need to specify a different IP for the source cluster than is contained in kubeconfig")
+	RegisterClusterCmd.Flags().String("override-src-port", "", "override source port for when you need to specify a different port for the source cluster than is contained in src kubeconfig")
 
 	if err := RegisterClusterCmd.MarkFlagRequired("source-context"); err != nil {
 		panic(err)
@@ -40,7 +40,7 @@ func SetupRegisterClusterCmd(cmd *cobra.Command, streams genericclioptions.IOStr
 	if err := RegisterClusterCmd.MarkFlagRequired("dest-context"); err != nil {
 		panic(err)
 	}
-	RegisterClusterCmd.MarkFlagsRequiredTogether("oride-src-ip", "oride-src-port")
+	RegisterClusterCmd.MarkFlagsRequiredTogether("override-src-ip", "override-src-port")
 	cmd.AddCommand(RegisterClusterCmd)
 }
 
