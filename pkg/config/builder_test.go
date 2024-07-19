@@ -486,7 +486,7 @@ func TestGCOptions(t *testing.T) {
 	assert.Equal([]string{"-XX:+UseShenandoahGC"}, getGCOptions("Shenandoah", 11))
 	assert.Equal([]string{"-XX:+UseShenandoahGC"}, getGCOptions("Shenandoah", 17))
 
-	assert.Equal([]string{"-XX:+UseZGC", "-XX:+UnlockExperimentalVMOptions"}, getGCOptions("ZGC", 11))
+	assert.Equal([]string{"-XX:+UnlockExperimentalVMOptions", "-XX:+UseZGC"}, getGCOptions("ZGC", 11))
 	assert.Equal([]string{"-XX:+UseZGC"}, getGCOptions("ZGC", 17))
 }
 
