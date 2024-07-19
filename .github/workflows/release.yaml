@@ -11,24 +11,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
       - name: Login to GitHub Container Registry
         if: ${{ !env.ACT }}
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -43,7 +43,7 @@ jobs:
           mkdir -p build/
       - name: Build and push
         id: docker_build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v6
         with:
           load: false
           file: cmd/kubectl-k8ssandra/Dockerfile
@@ -53,13 +53,23 @@ jobs:
           platforms: linux/amd64,linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          username: redhat-isv-containers+64f725593ba91d38e7246955-robot
+          password: ${{ secrets.K8SSANDRA_CLIENT_CONNECT_SECRET }}
       - name: Tag and push images for Red Hat certification
-        shell: bash
-        if: ${{ !env.ACT }}
-        run: |
-          docker tag k8ssandra/k8ssandra-client:${{ steps.vars.outputs.tag_name}} quay.io/redhat-isv-containers/64f725593ba91d38e7246955:${{ steps.vars.outputs.tag_name}}
-          docker login -u redhat-isv-containers+64f725593ba91d38e7246955-robot quay.io -p ${{ secrets.K8SSANDRA_CLIENT_CONNECT_SECRET }}
-          docker push quay.io/redhat-isv-containers/64f725593ba91d38e7246955:${{ steps.vars.outputs.tag_name}}
+        id: docker_build_redhat
+        uses: docker/build-push-action@v6
+        with:
+          load: false
+          file: cmd/kubectl-k8ssandra/Dockerfile
+          push: true
+          context: .
+          tags: quay.io/redhat-isv-containers/64f725593ba91d38e7246955:${{ steps.vars.outputs.tag_name}}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
       - name: Install CLI tools from OpenShift Mirror
         uses: redhat-actions/openshift-tools-installer@v1
         with:
@@ -74,7 +84,6 @@ jobs:
       - name: Run preflight checks and submit results
         shell: bash
         run: |
-          docker login -u redhat-isv-containers+5ebee0e40e3deaf258b160d1-robot quay.io -p ${{ secrets.K8SSANDRA_CLIENT_CONNECT_SECRET }}
           preflight check container quay.io/redhat-isv-containers/64f725593ba91d38e7246955:${{ steps.vars.outputs.tag_name}} --certification-project-id=64f725593ba91d38e7246955 --pyxis-api-token=${{ secrets.PREFLIGHT_KEY }} --submit --docker-config=$HOME/.docker/config.json
   goreleaser:
     runs-on: ubuntu-latest
