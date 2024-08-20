@@ -7,9 +7,9 @@ import (
 	// "github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/edit"
 	// "github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/list"
 	// "github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/migrate"
-	// "github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/nodetool"
 	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/config"
 	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/helm"
+	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/nodetool"
 	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/operate"
 	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/register"
 	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/users"
@@ -54,6 +54,7 @@ func NewCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	// cmd.AddCommand(migrate.NewInstallCmd(streams))
 	cmd.AddCommand(config.NewCmd(streams))
 	cmd.AddCommand(helm.NewHelmCmd(streams))
+	cmd.AddCommand(nodetool.NewCmd(streams))
 	register.SetupRegisterClusterCmd(cmd, streams)
 
 	// cmd.Flags().BoolVar(&o.listNamespaces, "list", o.listNamespaces, "if true, print the list of all namespaces in the current KUBECONFIG")

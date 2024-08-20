@@ -19,7 +19,7 @@ ENVTEST_K8S_VERSION = 1.28.x
 GO_FLAGS ?= -v
 
 .PHONY: all
-all: build
+all: test build
 
 ##@ General
 
@@ -59,7 +59,7 @@ lint: golangci-lint ## Run golangci-lint against code
 	$(GOLANGCI_LINT) run ./...
 
 .PHONY: build
-build: test ## Build kubectl-k8ssandra
+build: ## Build kubectl-k8ssandra
 	CGO_ENABLED=0 go build -o kubectl-k8ssandra cmd/kubectl-k8ssandra/main.go
 
 .PHONY: docker-build
