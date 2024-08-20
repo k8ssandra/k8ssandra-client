@@ -17,9 +17,9 @@ import (
 
 func TestCassandraAuthDetails(t *testing.T) {
 	scheme := runtime.NewScheme()
-	clientgoscheme.AddToScheme(scheme)
-	cassdcapi.AddToScheme(scheme)
 	assert := assert.New(t)
+	assert.NoError(clientgoscheme.AddToScheme(scheme))
+	assert.NoError(cassdcapi.AddToScheme(scheme))
 
 	cassdc := &cassdcapi.CassandraDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
