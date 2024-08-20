@@ -2,6 +2,7 @@ package cassdcutil
 
 import (
 	"context"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -32,10 +33,10 @@ func (c *CassManager) CassandraAuthDetails(ctx context.Context, cassdc *cassdcap
 
 	if ClientEncryptionEnabled(cassdc) {
 		encryptionOptions := SubSectionOfCassYaml(cassdc, "client_encryption_options")
-		auth.KeystorePath = encryptionOptions["keystore"].Data().(string)
-		auth.KeystorePassword = encryptionOptions["keystore_password"].Data().(string)
-		auth.TruststorePath = encryptionOptions["truststore"].Data().(string)
-		auth.TruststorePassword = encryptionOptions["truststore_password"].Data().(string)
+		auth.KeystorePath = strings.TrimSpace(encryptionOptions["keystore"].Data().(string))
+		auth.KeystorePassword = strings.TrimSpace(encryptionOptions["keystore_password"].Data().(string))
+		auth.TruststorePath = strings.TrimSpace(encryptionOptions["truststore"].Data().(string))
+		auth.TruststorePassword = strings.TrimSpace(encryptionOptions["truststore_password"].Data().(string))
 	}
 
 	return auth, nil
