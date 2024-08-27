@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	cassdcapi "github.com/k8ssandra/cass-operator/apis/cassandra/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,6 +24,7 @@ func (c *CassManager) CassandraDatacenter(ctx context.Context, name, namespace s
 }
 
 // PodDatacenter returns the CassandraDatacenter instance of the pod if it's managed by cass-operator
+// We use the OwnerReference method because the pod labels are incorrect if datacenter name override is used
 func (c *CassManager) PodDatacenter(ctx context.Context, podName, namespace string) (*cassdcapi.CassandraDatacenter, error) {
 	key := types.NamespacedName{Namespace: namespace, Name: podName}
 	pod := &corev1.Pod{}
@@ -31,19 +33,28 @@ func (c *CassManager) PodDatacenter(ctx context.Context, podName, namespace stri
 		return nil, err
 	}
 
-	if dc, found := pod.Labels[cassdcapi.DatacenterLabel]; !found {
-		return nil, fmt.Errorf("target pod not managed by cass-operator, no datacenter label")
-	} else {
-		// Get CassandraDatacenter for the dc
-		cassDcKey := types.NamespacedName{Namespace: namespace, Name: dc}
-		cassdc := &cassdcapi.CassandraDatacenter{}
-		err = c.client.Get(ctx, cassDcKey, cassdc)
-		if err != nil {
-			return nil, err
-		}
-
-		return cassdc, nil
+	if len(pod.OwnerReferences) < 1 {
+		return nil, fmt.Errorf("target pod not managed by cass-operator, no owner reference")
 	}
+
+	statefulSet := &appsv1.StatefulSet{}
+	err = c.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: pod.OwnerReferences[0].Name}, statefulSet)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(statefulSet.OwnerReferences) < 1 {
+		return nil, fmt.Errorf("target statefulset not managed by cass-operator, no owner reference")
+	}
+
+	cassDcKey := types.NamespacedName{Namespace: namespace, Name: statefulSet.OwnerReferences[0].Name}
+	cassdc := &cassdcapi.CassandraDatacenter{}
+	err = c.client.Get(ctx, cassDcKey, cassdc)
+	if err != nil {
+		return nil, err
+	}
+
+	return cassdc, nil
 }
 
 // CassandraDatacenterPods returns the pods of the CassandraDatacenter
