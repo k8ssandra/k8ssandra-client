@@ -1,4 +1,4 @@
-VERSION ?= 0.3.0
+VERSION ?= 0.6.0
 
 COMMIT := $(shell git rev-parse --short HEAD)
 DATE := $(shell date +%Y%m%d)
@@ -17,6 +17,8 @@ SHELL = /usr/bin/env bash -o pipefail
 ENVTEST_K8S_VERSION = 1.28.x
 
 GO_FLAGS ?= -v
+
+BUILDX_OPTIONS ?=
 
 .PHONY: all
 all: build
@@ -65,7 +67,7 @@ build: test ## Build kubectl-k8ssandra
 .PHONY: docker-build
 docker-build: ## Build k8ssandra-client docker image
 	mkdir -p build/
-	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG} . --load -f cmd/kubectl-k8ssandra/Dockerfile
+	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG} ${BUILDX_OPTIONS} . --load -f cmd/kubectl-k8ssandra/Dockerfile
 
 .PHONY: kind-load
 kind-load: ## Load k8ssandra-client:latest to kind
