@@ -2,7 +2,7 @@ package scheduler
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
@@ -98,6 +98,7 @@ func TryScheduling(ctx context.Context, cli client.Client, proposedPods []*corev
 		tainttolerationPlugin.(framework.FilterPlugin),
 	}
 
+	succeededPods := 0
 NextPod:
 	for _, pod := range proposedPods {
 	NextNode:
@@ -122,12 +123,13 @@ NextPod:
 			// be able to schedule anything to this node.
 			node.AddPod(pod)
 			n := node.Node()
+			succeededPods++
 
 			n.Spec.Unschedulable = true
 			continue NextPod
 		}
 		// Pod was never added to any node
-		return errors.New(framework.Unschedulable.String())
+		return fmt.Errorf("unable to schedule all the pods, requested: %d, schedulable: %d", len(proposedPods), succeededPods)
 	}
 	return nil
 }

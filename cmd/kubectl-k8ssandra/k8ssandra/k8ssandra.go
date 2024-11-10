@@ -12,6 +12,7 @@ import (
 	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/nodetool"
 	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/operate"
 	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/register"
+	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/tools"
 	"github.com/k8ssandra/k8ssandra-client/cmd/kubectl-k8ssandra/users"
 
 	"github.com/spf13/cobra"
@@ -40,21 +41,18 @@ func NewCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	}
 
 	// Add subcommands
-	// cmd.AddCommand(nodetool.NewCmd(streams))
 	// cmd.AddCommand(cqlsh.NewCmd(streams))
 	// cmd.AddCommand(cleaner.NewCmd(streams))
-	// cmd.AddCommand(crds.NewCmd(streams))
 	// cmd.AddCommand(edit.NewCmd(streams))
 	cmd.AddCommand(operate.NewStartCmd(streams))
 	cmd.AddCommand(operate.NewRestartCmd(streams))
 	cmd.AddCommand(operate.NewStopCmd(streams))
 	// cmd.AddCommand(list.NewCmd(streams))
-	// cmd.AddCommand(migrate.NewCmd(streams))
 	cmd.AddCommand(users.NewCmd(streams))
-	// cmd.AddCommand(migrate.NewInstallCmd(streams))
 	cmd.AddCommand(config.NewCmd(streams))
 	cmd.AddCommand(helm.NewHelmCmd(streams))
 	cmd.AddCommand(nodetool.NewCmd(streams))
+	cmd.AddCommand(tools.NewToolsCmd(streams))
 	register.SetupRegisterClusterCmd(cmd, streams)
 
 	// cmd.Flags().BoolVar(&o.listNamespaces, "list", o.listNamespaces, "if true, print the list of all namespaces in the current KUBECONFIG")
