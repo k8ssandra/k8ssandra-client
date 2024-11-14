@@ -17,12 +17,15 @@ var (
 	# Add new users to CassandraDatacenter
 	%[1]s add [<args>]
 
+	# Add new user example to CassandraDatacenter dc2 with password prompting
+	%[1]s add --dc dc1 --username example --superuser
+
 	# Add new superusers to CassandraDatacenter dc1 from a path /tmp/users.txt
 	%[1]s add --dc dc1 --path /tmp/users.txt --superuser
 	`
 	errNoDcDc           = fmt.Errorf("target CassandraDatacenter is required")
 	errDoubleDefinition = fmt.Errorf("either --path or --username is allowed, not both")
-	errMissingUsername  = fmt.Errorf("if --password is set, --username is required")
+	errMissingUsername  = fmt.Errorf("--username is required")
 )
 
 type addOptions struct {
@@ -73,7 +76,7 @@ func NewAddCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	fl := cmd.Flags()
 	fl.StringVar(&o.secretPath, "path", "", "path to users data")
 	fl.StringVar(&o.datacenter, "dc", "", "target datacenter")
-	fl.BoolVar(&o.superuser, "superuser", true, "create users as superusers")
+	fl.BoolVar(&o.superuser, "superuser", true, "create users as superusers") // TODO Set default to false
 	fl.StringVarP(&o.username, "username", "u", "", "username to add")
 	fl.StringVarP(&o.password, "password", "p", "", "password to set for the user")
 	o.configFlags.AddFlags(fl)
@@ -155,5 +158,5 @@ func (c *addOptions) Run() error {
 		}
 	}
 
-	return users.AddNewUser(ctx, kubeClient, c.datacenter, c.username, c.password, c.superuser)
+	return users.Add(ctx, kubeClient, c.datacenter, c.username, c.password, c.superuser)
 }

@@ -1,4 +1,4 @@
-VERSION ?= 0.3.0
+VERSION ?= 0.7.0
 
 COMMIT := $(shell git rev-parse --short HEAD)
 DATE := $(shell date +%Y%m%d)
@@ -83,7 +83,7 @@ $(LOCALBIN):
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
-GOLINT_VERSION ?= 1.56.2
+GOLINT_VERSION ?= 1.61.0
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
