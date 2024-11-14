@@ -5,6 +5,11 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
+/*
+	users list
+	users delete (does mgmt-api have this ability?)
+*/
+
 type ClientOptions struct {
 	configFlags *genericclioptions.ConfigFlags
 	genericclioptions.IOStreams
@@ -28,6 +33,8 @@ func NewCmd(streams genericclioptions.IOStreams) *cobra.Command {
 
 	// Add subcommands
 	cmd.AddCommand(NewAddCmd(streams))
+	cmd.AddCommand(NewDeleteCmd(streams))
+	cmd.AddCommand(NewListCmd(streams))
 	o.configFlags.AddFlags(cmd.Flags())
 
 	return cmd

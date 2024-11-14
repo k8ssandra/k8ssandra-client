@@ -64,3 +64,27 @@ func (c *CassManager) CassandraDatacenterPods(ctx context.Context, cassdc *cassd
 	err := c.client.List(ctx, podList, client.InNamespace(cassdc.Namespace), client.MatchingLabels(map[string]string{cassdcapi.DatacenterLabel: cassdc.Name}))
 	return podList, err
 }
+
+func (c *CassManager) FirstRunningDatacenterPod(ctx context.Context, cassdc *cassdcapi.CassandraDatacenter) (*corev1.Pod, error) {
+	podList, err := c.CassandraDatacenterPods(ctx, cassdc)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pod := range podList.Items {
+		status := pod.Status
+		if status.Phase == corev1.PodRunning {
+			statuses := status.ContainerStatuses
+			for _, status := range statuses {
+				if status.Name != "cassandra" {
+					continue
+				}
+				if status.Ready {
+					return &pod, nil
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no running pods found for datacenter %s", cassdc.Name)
+}
