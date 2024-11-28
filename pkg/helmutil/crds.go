@@ -8,12 +8,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/pkg/errors"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	deser "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 
@@ -48,7 +51,7 @@ func NewUpgrader(c client.Client, repoName, repoURL, chartName string, subCharts
 func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstructured.Unstructured, error) {
 	log.SetLevel(log.DebugLevel)
 	log.Info("Processing request to upgrade project CustomResourceDefinitions", "repoName", u.repoName, "chartName", u.chartName, "chartVersion", chartVersion)
-	chartDir, err := GetChartTargetDir(u.repoName, u.chartName)
+	chartDir, err := GetChartTargetDir(u.repoName, u.chartName, chartVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +105,51 @@ func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstruct
 		} else {
 			log.Debug("Updating CustomResourceDefinition", "name", obj.GetName())
 			obj.SetResourceVersion(existingCrd.GetResourceVersion())
+
+			// TODO We need to check which versions we have available here before updating
+			unstructured := obj.UnstructuredContent()
+			var definition apiextensionsv1.CustomResourceDefinition
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructured, &definition); err != nil {
+				return nil, errors.Wrapf(err, "failed to convert unstructured to CustomResourceDefinition %s", obj.GetName())
+			}
+
+			updatedVersions := make([]string, 0, len(definition.Spec.Versions))
+			for _, version := range definition.Spec.Versions {
+				updatedVersions = append(updatedVersions, version.Name)
+			}
+			log.Debug("Read CustomResourceDefinition versions", "name", obj.GetName(), "versions", updatedVersions)
+
+			existing := existingCrd.UnstructuredContent()
+			var existingDefinition apiextensionsv1.CustomResourceDefinition
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(existing, &existingDefinition); err != nil {
+				return nil, errors.Wrapf(err, "failed to convert unstructured to CustomResourceDefinition %s", obj.GetName())
+			}
+
+			storedVersions := existingDefinition.Status.StoredVersions
+
+			if !slices.Equal(storedVersions, updatedVersions) {
+
+				// Check if storedVersion has any versions that are not in updatedVersions
+				// If so, we need to remove them from the storedVersions
+				removed := false
+				for _, storedVersion := range storedVersions {
+					if !slices.Contains(updatedVersions, storedVersion) {
+						log.Debug("Removing CustomResourceDefinition version", "name", obj.GetName(), "version", storedVersion)
+						// storedVersions = slices.DeleteFunc(storedVersions, func(e string) bool { return e == storedVersion })
+						removed = true
+					}
+				}
+
+				if removed {
+					log.Debug("Updating CustomResourceDefinition versions", "name", obj.GetName(), "storedVersions", storedVersions, "updatedVersions", updatedVersions)
+					existingDefinition.Status.StoredVersions = updatedVersions
+					if err := u.client.Status().Update(ctx, &existingDefinition); err != nil {
+						return nil, errors.Wrapf(err, "failed to update CRD storedVersions %s", obj.GetName())
+					}
+					obj.SetResourceVersion(existingDefinition.GetResourceVersion())
+				}
+			}
+
 			if err = u.client.Update(ctx, &obj); err != nil {
 				return nil, errors.Wrapf(err, "failed to update CRD %s", obj.GetName())
 			}
