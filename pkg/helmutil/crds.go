@@ -51,13 +51,13 @@ func NewUpgrader(c client.Client, repoName, repoURL, chartName string, subCharts
 func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstructured.Unstructured, error) {
 	log.SetLevel(log.DebugLevel)
 	log.Info("Processing request to upgrade project CustomResourceDefinitions", "repoName", u.repoName, "chartName", u.chartName, "chartVersion", chartVersion)
-	chartDir, err := GetChartTargetDir(u.repoName, u.chartName, chartVersion)
+	chartDir, err := GetChartTargetDir(u.repoName, u.chartName)
 	if err != nil {
 		return nil, err
 	}
 
 	if fs, err := os.Stat(chartDir); os.IsNotExist(err) {
-		log.Info("Downloading chart release from remote repository", "repoURL", u.repoURL, "chartName", u.chartName, "chartVersion", chartVersion)
+		log.Info("Downloading chart release from remote repository", "repoURL", u.repoURL, "chartName", u.chartName, "chartVersion", chartVersion, "chartDir", chartDir)
 		downloadDir, err := DownloadChartRelease(u.repoName, u.repoURL, u.chartName, chartVersion)
 		if err != nil {
 			return nil, err

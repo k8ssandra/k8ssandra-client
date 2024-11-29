@@ -110,13 +110,11 @@ func ExtractChartRelease(saved, repoName, chartName, chartVersion string) (strin
 	return extractDir, nil
 }
 
-func GetChartTargetDir(repoName, chartName, chartVersion string) (string, error) {
+func GetChartTargetDir(repoName, chartName string) (string, error) {
 	extractDir, err := util.GetCacheDir(repoName, chartName)
 	if err != nil {
 		return "", err
 	}
-
-	extractDir = filepath.Join(extractDir, chartVersion)
 
 	return extractDir, err
 }

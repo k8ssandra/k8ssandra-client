@@ -30,7 +30,7 @@ func TestUpgradingCRDs(t *testing.T) {
 	for _, chartName := range chartNames {
 		namespace := env.CreateNamespace(t)
 		kubeClient := env.GetClientInNamespace(namespace)
-		require.NoError(cleanCache("k8ssandra", chartName, "0.42.0"))
+		require.NoError(cleanCache("k8ssandra", chartName))
 
 		// creating new upgrader
 		u, err := helmutil.NewUpgrader(kubeClient, helmutil.K8ssandraRepoName, helmutil.StableK8ssandraRepoURL, chartName, []string{})
@@ -64,7 +64,7 @@ func TestUpgradingCRDs(t *testing.T) {
 		require.False(strings.HasPrefix(descRunsAsCassandra, "DEPRECATED"))
 
 		// Upgrading to 0.46.1
-		require.NoError(cleanCache("k8ssandra", chartName, "0.46.1"))
+		require.NoError(cleanCache("k8ssandra", chartName))
 		_, err = u.Upgrade(context.TODO(), "0.46.1")
 		require.NoError(err)
 
@@ -82,8 +82,8 @@ func TestUpgradingCRDs(t *testing.T) {
 	}
 }
 
-func cleanCache(repoName, chartName, version string) error {
-	chartDir, err := helmutil.GetChartTargetDir(repoName, chartName, version)
+func cleanCache(repoName, chartName string) error {
+	chartDir, err := helmutil.GetChartTargetDir(repoName, chartName)
 	if err != nil {
 		return err
 	}
@@ -100,36 +100,16 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	chartName := "test-chart"
 	namespace := env.CreateNamespace(t)
 	kubeClient := env.GetClientInNamespace(namespace)
-	require.NoError(cleanCache("k8ssandra", chartName, "0.1.0"))
-	require.NoError(cleanCache("k8ssandra", chartName, "0.2.0"))
-	require.NoError(cleanCache("k8ssandra", chartName, "0.3.0"))
+	require.NoError(cleanCache("k8ssandra", chartName))
 
 	// Copy testfiles
-	chartDir, err := helmutil.GetChartTargetDir(helmutil.K8ssandraRepoName, chartName, "0.1.0")
+	chartDir, err := helmutil.GetChartTargetDir(helmutil.K8ssandraRepoName, chartName)
 	require.NoError(err)
 
 	crdDir := filepath.Join(chartDir, "crds")
 	_, err = util.CreateIfNotExistsDir(crdDir)
 	require.NoError(err)
 	crdSrc := filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-v1alpha1.yaml")
-	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
-
-	chartDir, err = helmutil.GetChartTargetDir(helmutil.K8ssandraRepoName, chartName, "0.2.0")
-	require.NoError(err)
-
-	crdDir = filepath.Join(chartDir, "crds")
-	_, err = util.CreateIfNotExistsDir(crdDir)
-	require.NoError(err)
-	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-both.yaml")
-	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
-
-	chartDir, err = helmutil.GetChartTargetDir(helmutil.K8ssandraRepoName, chartName, "0.3.0")
-	require.NoError(err)
-
-	crdDir = filepath.Join(chartDir, "crds")
-	_, err = util.CreateIfNotExistsDir(crdDir)
-	require.NoError(err)
-	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-v1beta1.yaml")
 	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
 
 	testOptions := envtest.CRDInstallOptions{
@@ -161,6 +141,12 @@ func TestUpgradingStoredVersions(t *testing.T) {
 
 	// Upgrade to 0.2.0
 
+	require.NoError(cleanCache("k8ssandra", chartName))
+	_, err = util.CreateIfNotExistsDir(crdDir)
+	require.NoError(err)
+	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-both.yaml")
+	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
+
 	crds, err = u.Upgrade(context.TODO(), "0.2.0")
 	require.NoError(err)
 	for _, crd := range crds {
@@ -174,6 +160,12 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	require.Equal([]string{"v1alpha1", "v1beta1"}, targetCrd.Status.StoredVersions)
 
 	// Upgrade to 0.3.0
+
+	require.NoError(cleanCache("k8ssandra", chartName))
+	_, err = util.CreateIfNotExistsDir(crdDir)
+	require.NoError(err)
+	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-v1beta1.yaml")
+	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
 
 	crds, err = u.Upgrade(context.TODO(), "0.3.0")
 	require.NoError(err)
@@ -196,6 +188,12 @@ func TestUpgradingStoredVersions(t *testing.T) {
 
 	// Install 0.2.0
 
+	require.NoError(cleanCache("k8ssandra", chartName))
+	_, err = util.CreateIfNotExistsDir(crdDir)
+	require.NoError(err)
+	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-both.yaml")
+	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
+
 	crds, err = u.Upgrade(context.TODO(), "0.2.0")
 	require.NoError(err)
 	for _, crd := range crds {
@@ -209,6 +207,12 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	require.Equal([]string{"v1beta1"}, targetCrd.Status.StoredVersions)
 
 	// Upgrade to 0.3.0
+
+	require.NoError(cleanCache("k8ssandra", chartName))
+	_, err = util.CreateIfNotExistsDir(crdDir)
+	require.NoError(err)
+	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-v1beta1.yaml")
+	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
 
 	crds, err = u.Upgrade(context.TODO(), "0.3.0")
 	require.NoError(err)
