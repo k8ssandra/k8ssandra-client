@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/charmbracelet/log"
+
 	"github.com/pkg/errors"
 
 	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
@@ -11,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -31,6 +34,7 @@ var (
 type estimateOptions struct {
 	configFlags *genericclioptions.ConfigFlags
 	genericclioptions.IOStreams
+	rawConfig clientcmdapi.Config
 
 	count  int
 	memory string
@@ -63,7 +67,9 @@ func NewEstimateCmd(streams genericclioptions.IOStreams) *cobra.Command {
 				return err
 			}
 			if err := o.Run(); err != nil {
-				return err
+				log.Printf("Error: %v", err)
+			} else {
+				log.Printf("Pods can be scheduled to current cluster %s", o.rawConfig.CurrentContext)
 			}
 
 			return nil
@@ -98,7 +104,7 @@ func (c *estimateOptions) Complete(cmd *cobra.Command, args []string) error {
 
 // Validate ensures that all required arguments and flag values are provided
 func (c *estimateOptions) Validate() error {
-	if c.count < 0 {
+	if c.count <= 0 {
 		return errInvalidCount
 	}
 
@@ -115,6 +121,12 @@ func (c *estimateOptions) Validate() error {
 
 	c.memoryQuantity = memoryQuantity
 	c.cpuQuantity = cpuQuantity
+
+	f, err := c.configFlags.ToRawKubeConfigLoader().RawConfig()
+	if err != nil {
+		return err
+	}
+	c.rawConfig = f
 
 	return nil
 }
@@ -135,7 +147,7 @@ func (c *estimateOptions) Run() error {
 	proposedPods := makePods(c.count, makeResources(c.cpuQuantity.MilliValue(), c.memoryQuantity.Value()))
 
 	if err := scheduler.TryScheduling(ctx, kubeClient, proposedPods); err != nil {
-		return errors.Wrap(err, "Unable to schedule the pods")
+		return errors.Wrap(err, fmt.Sprintf("Unable to schedule the pods to current cluster %s", c.rawConfig.CurrentContext))
 	}
 
 	return nil
