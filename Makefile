@@ -83,7 +83,7 @@ $(LOCALBIN):
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
-GOLINT_VERSION ?= 1.61.0
+GOLINT_VERSION ?= 1.64.7
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
