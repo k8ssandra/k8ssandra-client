@@ -487,7 +487,14 @@ func k8ssandraOverrides(merged map[string]interface{}, configInput *ConfigInput,
 	merged["rpc_address"] = nodeInfo.RPCIP.String()
 	delete(merged, "broadcast_address") // Sets it to the same as listen_address
 	merged["broadcast_rpc_address"] = nodeInfo.BroadcastIP
-	merged["endpoint_snitch"] = "GossipingPropertyFileSnitch"
+
+	// 5.1 and newer have deprecated endpoint_snitch
+	if nodeProximity, found := merged["node_proximity"]; found && nodeProximity.(string) == "NetworkTopologyProximity" {
+		merged["initial_location_provider"] = "RackDCFileLocationProvider"
+	} else if !found {
+		merged["endpoint_snitch"] = "GossipingPropertyFileSnitch"
+	}
+
 	merged["cluster_name"] = configInput.ClusterInfo.Name
 
 	return merged
