@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -459,6 +460,15 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 	merged, err := goalesce.DeepMerge(cassandraYaml, configInput.CassYaml)
 	if err != nil {
 		return err
+	}
+
+	// This is to fix the behavior in goalesce where it doesn't know how to merge the bools
+	// since it assumes all the booleans are zero values if setting to false
+	for k, v := range configInput.CassYaml {
+		reflectValue := reflect.ValueOf(v)
+		if reflectValue.Kind() == reflect.Bool {
+			merged[k] = reflectValue.Bool()
+		}
 	}
 
 	// Take the NodeInfo information and add those modifications to the merge output (a priority)
