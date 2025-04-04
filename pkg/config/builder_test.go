@@ -104,6 +104,34 @@ var numericConfig = `
 }
 `
 
+var booleanOverride = `
+{
+    "cassandra-yaml": {
+        "authenticator": "com.datastax.bdp.cassandra.auth.DseAuthenticator",
+        "authorizer": "com.datastax.bdp.cassandra.auth.DseAuthorizer",
+        "auto_snapshot": false,
+        "file_cache_size_in_mb": 100,
+        "memtable_space_in_mb": 100,
+        "num_tokens": 0,
+        "role_manager": "com.datastax.bdp.cassandra.auth.DseRoleManager",
+        "rpc_keepalive": false
+    },
+    "cluster-info": {
+        "name": "cluster1",
+        "seeds": "cluster1-seed-service,cluster1-dc1-additional-seed-service"
+    },
+    "datacenter-info": {
+        "graph-enabled": 0,
+        "name": "dc1",
+        "solr-enabled": 0,
+        "spark-enabled": 1
+    },
+    "jvm-server-options": {
+        "initial_heap_size": "2000m",
+        "max_heap_size": "2000m"
+    }
+}`
+
 func TestBuilderDefaults(t *testing.T) {
 	require := require.New(t)
 	builder := NewBuilder("", "")
@@ -361,6 +389,42 @@ func TestCassandraYamlSubPath(t *testing.T) {
 	authenticator := cassandraYaml["authenticator"]
 	authenticatorStruct := authenticator.(map[string]interface{})
 	require.Equal("org.apache.cassandra.auth.PasswordAuthenticator", authenticatorStruct["class_name"])
+}
+
+func TestBooleanOverride(t *testing.T) {
+	require := require.New(t)
+	cassYamlDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+	require.NoError(err)
+
+	defer os.RemoveAll(tempDir)
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", booleanOverride)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+	t.Setenv("POD_IP", "172.27.0.1")
+	t.Setenv("RACK_NAME", "r1")
+	nodeInfo, err := parseNodeInfo()
+	require.NoError(err)
+	require.NotNil(nodeInfo)
+
+	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
+
+	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
+
+	yamlFile, err := os.ReadFile(yamlPath)
+	require.NoError(err)
+
+	// Unmarshal, Marshal to remove all comments (and some fields if necessary)
+	cassandraYaml := make(map[string]interface{})
+	require.NoError(yaml.Unmarshal(yamlFile, cassandraYaml))
+
+	authenticator := cassandraYaml["authenticator"]
+	require.Equal("com.datastax.bdp.cassandra.auth.DseAuthenticator", authenticator)
+	require.Equal(false, cassandraYaml["auto_snapshot"])
+	require.Equal(false, cassandraYaml["rpc_keepalive"])
 }
 
 func TestRackProperties(t *testing.T) {
