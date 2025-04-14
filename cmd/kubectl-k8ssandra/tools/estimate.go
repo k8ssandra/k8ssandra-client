@@ -8,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
 	"github.com/k8ssandra/k8ssandra-client/pkg/scheduler"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -138,15 +137,12 @@ func (c *estimateOptions) Run() error {
 		return err
 	}
 
-	kubeClient, err := kubernetes.GetClient(restConfig)
-	if err != nil {
-		return err
-	}
 	ctx := context.Background()
+	clientBuilder := scheduler.NewKubernetesClientBuilder(restConfig)
 
 	proposedPods := makePods(c.count, makeResources(c.cpuQuantity.MilliValue(), c.memoryQuantity.Value()))
 
-	if err := scheduler.TryScheduling(ctx, kubeClient, proposedPods); err != nil {
+	if err := scheduler.TryScheduling(ctx, clientBuilder, proposedPods); err != nil {
 		return errors.Wrap(err, fmt.Sprintf("Unable to schedule the pods to current cluster %s", c.rawConfig.CurrentContext))
 	}
 

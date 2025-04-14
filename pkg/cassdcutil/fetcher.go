@@ -61,6 +61,7 @@ func (c *CassManager) PodDatacenter(ctx context.Context, podName, namespace stri
 func (c *CassManager) CassandraDatacenterPods(ctx context.Context, cassdc *cassdcapi.CassandraDatacenter) (*corev1.PodList, error) {
 	// What if same namespace has two datacenters with the same name? Can that happen?
 	podList := &corev1.PodList{}
+	// TODO FIX THIS, should have  app.kubernetes.io/name: cassandra and clusterNameLabel
 	err := c.client.List(ctx, podList, client.InNamespace(cassdc.Namespace), client.MatchingLabels(map[string]string{cassdcapi.DatacenterLabel: cassdc.Name}))
 	return podList, err
 }
