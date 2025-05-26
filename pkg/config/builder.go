@@ -591,7 +591,7 @@ func writeYaml(doc map[string]interface{}, targetFile string) error {
 
 func copyFiles(sourceDir, targetDir string) error {
 	// Copy the files we're not modifying
-	files := []string{"jvm-clients.options", "jvm11-clients.options", "jvm17-clients.options", "logback.xml", "logback-tools.xml", "jvm-dependent.sh", "jvm.options"}
+	files := []string{"jvm-clients.options", "jvm11-clients.options", "jvm17-clients.options", "logback.xml", "logback-tools.xml", "jvm-dependent.sh", "jvm.options", "cassandra-jaas.config"}
 
 	for _, f := range files {
 		sourceFile := filepath.Join(sourceDir, f)
