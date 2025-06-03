@@ -17,5 +17,5 @@ func NewManagementClient(ctx context.Context, client client.Client, namespace, d
 		return httphelper.NodeMgmtClient{}, err
 	}
 
-	return httphelper.NewMgmtClient(ctx, client, dc)
+	return httphelper.NewMgmtClient(ctx, client, dc, nil)
 }

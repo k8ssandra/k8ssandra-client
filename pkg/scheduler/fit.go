@@ -85,7 +85,7 @@ func TryScheduling(ctx context.Context, cli client.Client, proposedPods []*corev
 	// 	return err
 	// }
 
-	tainttolerationPlugin, err := tainttoleration.New(ctx, nil, nil)
+	tainttolerationPlugin, err := tainttoleration.New(ctx, nil, nil, plfeature.Features{})
 	if err != nil {
 		return err
 	}
@@ -109,11 +109,15 @@ NextPod:
 			}
 
 			for _, plugin := range plugins {
+				var preFilterStatus, filterStatus *framework.Status
 				if prefilterPlugin, ok := plugin.(framework.PreFilterPlugin); ok {
-					prefilterPlugin.PreFilter(ctx, state, podInfo.Pod)
+					_, preFilterStatus = prefilterPlugin.PreFilter(ctx, state, podInfo.Pod)
+					if preFilterStatus.Code() != framework.Success && preFilterStatus.Code() != framework.Skip {
+						continue NextNode
+					}
 				}
-				status := plugin.Filter(ctx, state, podInfo.Pod, node)
-				if status.Code() != framework.Success {
+				filterStatus = plugin.Filter(ctx, state, podInfo.Pod, node)
+				if filterStatus.Code() != framework.Success {
 					continue NextNode
 				}
 			}
@@ -123,9 +127,9 @@ NextPod:
 			// be able to schedule anything to this node.
 			node.AddPod(pod)
 			n := node.Node()
+			n.Spec.Unschedulable = true
 			succeededPods++
 
-			n.Spec.Unschedulable = true
 			continue NextPod
 		}
 		// Pod was never added to any node

@@ -21,7 +21,7 @@ COPY build/ build/
 # Build
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o kubectl-k8ssandra cmd/kubectl-k8ssandra/main.go
 
-FROM redhat/ubi8-minimal:latest AS ubi-builder
+FROM redhat/ubi9-minimal:latest AS ubi-builder
 
 ARG YQ_VERSION
 ARG KUBE_VERSION
@@ -41,10 +41,10 @@ RUN microdnf install -y kubectl
 WORKDIR /workspace
 
 # Install yq
-RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION:-4.45.1}/yq_${TARGETOS:-linux}_${TARGETARCH:-amd64}" -o yq
+RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION:-4.45.4}/yq_${TARGETOS:-linux}_${TARGETARCH:-amd64}" -o yq
 
 # Build the UBI image
-FROM redhat/ubi8-minimal:latest
+FROM redhat/ubi9-minimal:latest
 
 ARG VERSION
 
