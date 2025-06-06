@@ -1,11 +1,8 @@
 package helmutil
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -17,8 +14,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	deser "k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -206,75 +201,8 @@ func findCRDDirs(chartDir string, subCharts []string) ([]string, error) {
 }
 
 func parseChartCRDs(crds *[]unstructured.Unstructured, crdDir string) error {
-	errOuter := filepath.Walk(crdDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			log.Error("Error parsing CustomResourceDefinition directory", "path", path, "error", err)
-			return err
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		// Add to CRDs ..
-		log.Debug("Parsing CustomResourceDefinition file", "path", path)
-		b, err := os.ReadFile(path)
-		if err != nil {
-			log.Error("Failed to read CustomResourceDefinition file", "path", path, "error", err)
-			return err
-		}
-
-		if len(b) == 0 {
-			log.Warn("Empty CustomResourceDefinition file", "path", path)
-			return nil
-		}
-
-		docs, err := parseCRDYamls(b)
-		if err != nil {
-			log.Error("Failed to parse YAML CustomResourceDefinition file", "path", path, "error", err)
-			return err
-		}
-		dec := deser.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-
-		for _, b := range docs {
-			crd := unstructured.Unstructured{}
-
-			_, gvk, err := dec.Decode(b, nil, &crd)
-			if err != nil {
-				log.Error("Failed to decode CustomResourceDefinition", "path", path, "error", err)
-				continue
-			}
-
-			if gvk.Kind != "CustomResourceDefinition" {
-				log.Error("File is not a CustomResourceDefinition", "path", path, "kind", gvk.Kind)
-				continue
-			}
-
-			*crds = append(*crds, crd)
-		}
-
-		return err
-	})
-
-	return errOuter
-}
-
-func parseCRDYamls(b []byte) ([][]byte, error) {
-	docs := [][]byte{}
-	reader := k8syaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
-	for {
-		// Read document
-		doc, err := reader.Read()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-
-			return nil, err
-		}
-
-		docs = append(docs, doc)
+	if err := FilterCharts(crds, crdDir, []string{"CustomResourceDefinition"}); err != nil {
+		return errors.Wrapf(err, "failed to parse CustomResourceDefinition directory %s", crdDir)
 	}
-
-	return docs, nil
+	return nil
 }
