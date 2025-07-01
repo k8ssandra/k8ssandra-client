@@ -18,6 +18,8 @@ ENVTEST_K8S_VERSION = 1.31.x
 
 GO_FLAGS ?= -v
 
+BUILDX_OPTIONS ?=
+
 .PHONY: all
 all: test build
 
@@ -65,7 +67,7 @@ build: ## Build kubectl-k8ssandra
 .PHONY: docker-build
 docker-build: ## Build k8ssandra-client docker image
 	mkdir -p build/
-	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG} . --load -f cmd/kubectl-k8ssandra/Dockerfile
+	docker buildx build --build-arg VERSION=${VERSION} -t ${IMG} ${BUILDX_OPTIONS} . --load -f cmd/kubectl-k8ssandra/Dockerfile
 
 .PHONY: kind-load
 kind-load: ## Load k8ssandra-client:latest to kind
@@ -83,7 +85,7 @@ $(LOCALBIN):
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
-GOLINT_VERSION ?= 1.61.0
+GOLINT_VERSION ?= 1.64.7
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.

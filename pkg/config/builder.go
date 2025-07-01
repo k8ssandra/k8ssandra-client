@@ -9,7 +9,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
@@ -266,9 +268,25 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 	if len(options) > 0 {
 		// Parse the jvm-server-options
 		if addOpts, found := options["additional-jvm-opts"]; found {
-			// These should be appended..
-			for _, v := range addOpts.([]interface{}) {
-				targetOptions = append(targetOptions, v.(string))
+			// Detect if any of these are garbage collector options and add them to options under garbage_collector instead
+			gcName := detectGarbageCollector(addOpts.([]interface{}))
+
+			// If a GC was detected and garbage_collector isn't already set, set it
+			if gcName != "" && options["garbage_collector"] == nil {
+				options["garbage_collector"] = gcName
+
+				// Filter out the GC options from additional-jvm-opts
+				filteredOpts := filterGCOptions(addOpts.([]any))
+
+				// Add the filtered options to targetOptions
+				for _, v := range filteredOpts {
+					targetOptions = append(targetOptions, v.(string))
+				}
+			} else {
+				// No GC detected or garbage_collector already set, just add all options
+				for _, v := range addOpts.([]interface{}) {
+					targetOptions = append(targetOptions, v.(string))
+				}
 			}
 		}
 
@@ -292,19 +310,31 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 		options = make(map[string]interface{})
 	}
 
-	if filename == "jvm11-server.options" {
-		if _, found := options["garbage_collector"]; !found {
-			// This is only applicable to JVM11 options..
-			options["garbage_collector"] = "G1GC"
-		}
-
+	// If filename matches jvm.*-server.options and has garbage_collector setting
+	if matched, _ := regexp.MatchString(`jvm.*-server\.options`, filename); matched {
 		if gcOpts, found := options["garbage_collector"]; found {
-			// Get the GC options
-			currentOptions = append(currentOptions, getGCOptions(fmt.Sprintf("%v", gcOpts), 11)...)
+			// Extract JVM version from filename
+			re := regexp.MustCompile(`jvm(\d+)-server\.options`)
+			jvmVersion := 8 // Default for jvm-server.options
+
+			if matches := re.FindStringSubmatch(filename); len(matches) > 1 {
+				jvmVersion, _ = strconv.Atoi(matches[1])
+			}
+
+			currentOptions = slices.DeleteFunc(currentOptions, func(s string) bool {
+				allOpts := getAllGCOptions(jvmVersion)
+				for _, opt := range allOpts {
+					if strings.Contains(s, opt) {
+						return true
+					}
+				}
+				return false
+			})
+
+			// Add GC options for this JVM version
+			currentOptions = append(currentOptions, getGCOptions(fmt.Sprintf("%v", gcOpts), jvmVersion)...)
 		}
 	}
-
-	// Add current options, if they're not there..
 curOptions:
 	for _, v := range currentOptions {
 		curValueLoc := strings.Index(v, "=")
@@ -351,12 +381,70 @@ curOptions:
 	return nil
 }
 
+const (
+	G1GC       = "G1GC"
+	CMS        = "CMS"
+	Shenandoah = "Shenandoah"
+	ZGC        = "ZGC"
+)
+
+var supportedGCs = []string{G1GC, CMS, Shenandoah, ZGC}
+
+// GC option flags mapped to their collector type
+var gcOptionMapping = map[string]string{
+	"-XX:+UseG1GC":            G1GC,
+	"-XX:+UseConcMarkSweepGC": CMS,
+	"-XX:+UseCMS":             CMS,
+	"-XX:+UseShenandoahGC":    Shenandoah,
+	"-XX:+UseZGC":             ZGC,
+}
+
+func detectGarbageCollector(opts []interface{}) string {
+	for _, opt := range opts {
+		optStr := opt.(string)
+		for flagPattern, gcType := range gcOptionMapping {
+			if strings.Contains(optStr, flagPattern) {
+				return gcType
+			}
+		}
+	}
+	return ""
+}
+
+// filterGCOptions removes garbage collector related options from the given slice
+func filterGCOptions(opts []any) []any {
+	return slices.DeleteFunc(opts, func(s any) bool {
+		for k := range gcOptionMapping {
+			if s.(string) == k {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func getAllGCOptions(jvmMajor int) []string {
+	// Get all these options using getGCOptions
+	gcOpts := make([]string, 0, 4)
+	for _, gc := range supportedGCs {
+		gcOpts = append(gcOpts, getGCOptions(gc, jvmMajor)...)
+	}
+	return gcOpts
+}
+
 func getGCOptions(gcName string, jvmMajor int) []string {
 	switch gcName {
 	case "G1GC":
-		return defaultG1Settings
+		if jvmMajor < 17 {
+			return defaultG1Settings
+		}
+		return []string{"-XX:+UseG1GC"} // For JDK17 and newer we use the defaults provided by Cassandra, not OpsCenter
 	case "CMS":
-		return defaultCMSSettings
+		// JDK17 and newer have removed the CMS garbage collector
+		if jvmMajor < 17 {
+			return defaultCMSSettings
+		}
+		return []string{}
 	case "Shenandoah":
 		return []string{"-XX:+UseShenandoahGC"}
 	case "ZGC":
@@ -398,28 +486,11 @@ func readJvmServerOptions(path string) ([]string, error) {
 
 	defer f.Close()
 
-	runningSegment := false
-	currentSegment := ""
-
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text()) // Avoid dual allocation from token -> string
 
-		// Try to detect GC settings
-		if strings.HasPrefix(line, "### ") {
-			segmentName, _ := strings.CutPrefix(line, "### ")
-			if !runningSegment {
-				currentSegment = segmentName
-				runningSegment = true
-			} else {
-				currentSegment = segmentName
-			}
-		}
-
 		if !strings.HasPrefix(line, "#") && len(line) > 0 {
-			if runningSegment && (strings.HasPrefix(currentSegment, "G1") || strings.HasPrefix(currentSegment, "CMS")) {
-				continue
-			}
 			options = append(options, line)
 		}
 	}
@@ -461,6 +532,15 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 		return err
 	}
 
+	// This is to fix the behavior in goalesce where it doesn't know how to merge the bools
+	// since it assumes all the booleans are zero values if setting to false
+	for k, v := range configInput.CassYaml {
+		reflectValue := reflect.ValueOf(v)
+		if reflectValue.Kind() == reflect.Bool {
+			merged[k] = reflectValue.Bool()
+		}
+	}
+
 	// Take the NodeInfo information and add those modifications to the merge output (a priority)
 	// Take the mandatory changes we require and merge them (a priority again)
 	merged = k8ssandraOverrides(merged, configInput, nodeInfo)
@@ -487,7 +567,14 @@ func k8ssandraOverrides(merged map[string]interface{}, configInput *ConfigInput,
 	merged["rpc_address"] = nodeInfo.RPCIP.String()
 	delete(merged, "broadcast_address") // Sets it to the same as listen_address
 	merged["broadcast_rpc_address"] = nodeInfo.BroadcastIP
-	merged["endpoint_snitch"] = "GossipingPropertyFileSnitch"
+
+	// 5.1 and newer have deprecated endpoint_snitch
+	if nodeProximity, found := merged["node_proximity"]; found && nodeProximity.(string) == "NetworkTopologyProximity" {
+		merged["initial_location_provider"] = "RackDCFileLocationProvider"
+	} else if !found {
+		merged["endpoint_snitch"] = "GossipingPropertyFileSnitch"
+	}
+
 	merged["cluster_name"] = configInput.ClusterInfo.Name
 
 	return merged
@@ -504,7 +591,7 @@ func writeYaml(doc map[string]interface{}, targetFile string) error {
 
 func copyFiles(sourceDir, targetDir string) error {
 	// Copy the files we're not modifying
-	files := []string{"jvm-clients.options", "jvm11-clients.options", "jvm17-clients.options", "logback.xml", "logback-tools.xml", "cassandra-jaas.config"}
+	files := []string{"jvm-clients.options", "jvm11-clients.options", "jvm17-clients.options", "logback.xml", "logback-tools.xml", "jvm-dependent.sh", "jvm.options"}
 
 	for _, f := range files {
 		sourceFile := filepath.Join(sourceDir, f)

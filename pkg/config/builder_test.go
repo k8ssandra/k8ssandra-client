@@ -79,6 +79,61 @@ var cass50Config = `
 }
 `
 
+var cass50ConfigJDK17OverrideGC = `
+{
+	"cassandra-yaml": {
+		"authenticator": {
+			"class_name": "org.apache.cassandra.auth.PasswordAuthenticator"
+		},
+		"authorizer": "org.apache.cassandra.auth.CassandraAuthorizer",
+		"role_manager": "CassandraRoleManager"
+	},
+	"jvm17-server-options": {
+		"garbage_collector": "Shenandoah",
+		"additional-jvm-opts": [
+		"-XX:MaxGCPauseMillis=350"
+		]
+	},
+	"cluster-info": {
+		"name": "test",
+		"seeds": "test-seed-service,test-dc-additional-seed-service"
+	},
+	"datacenter-info": {
+		"graph-enabled": 0,
+		"name": "datacenter1",
+		"solr-enabled": 0,
+		"spark-enabled": 0
+	}
+}
+`
+
+var cass50ConfigJDK17OverrideGCFromAdditionalOpts = `
+{
+	"cassandra-yaml": {
+		"authenticator": {
+			"class_name": "org.apache.cassandra.auth.PasswordAuthenticator"
+		},
+		"authorizer": "org.apache.cassandra.auth.CassandraAuthorizer",
+		"role_manager": "CassandraRoleManager"
+	},
+	"jvm17-server-options": {
+		"additional-jvm-opts": [
+		  "-XX:+UseZGC"
+		]
+	},
+	"cluster-info": {
+		"name": "test",
+		"seeds": "test-seed-service,test-dc-additional-seed-service"
+	},
+	"datacenter-info": {
+		"graph-enabled": 0,
+		"name": "datacenter1",
+		"solr-enabled": 0,
+		"spark-enabled": 0
+	}
+}
+`
+
 var numericConfig = `
 {
 	"jvm-server-options": {
@@ -103,6 +158,34 @@ var numericConfig = `
 	}
 }
 `
+
+var booleanOverride = `
+{
+    "cassandra-yaml": {
+        "authenticator": "com.datastax.bdp.cassandra.auth.DseAuthenticator",
+        "authorizer": "com.datastax.bdp.cassandra.auth.DseAuthorizer",
+        "auto_snapshot": false,
+        "file_cache_size_in_mb": 100,
+        "memtable_space_in_mb": 100,
+        "num_tokens": 0,
+        "role_manager": "com.datastax.bdp.cassandra.auth.DseRoleManager",
+        "rpc_keepalive": false
+    },
+    "cluster-info": {
+        "name": "cluster1",
+        "seeds": "cluster1-seed-service,cluster1-dc1-additional-seed-service"
+    },
+    "datacenter-info": {
+        "graph-enabled": 0,
+        "name": "dc1",
+        "solr-enabled": 0,
+        "spark-enabled": 1
+    },
+    "jvm-server-options": {
+        "initial_heap_size": "2000m",
+        "max_heap_size": "2000m"
+    }
+}`
 
 func TestBuilderDefaults(t *testing.T) {
 	require := require.New(t)
@@ -363,6 +446,42 @@ func TestCassandraYamlSubPath(t *testing.T) {
 	require.Equal("org.apache.cassandra.auth.PasswordAuthenticator", authenticatorStruct["class_name"])
 }
 
+func TestBooleanOverride(t *testing.T) {
+	require := require.New(t)
+	cassYamlDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+	require.NoError(err)
+
+	defer os.RemoveAll(tempDir)
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", booleanOverride)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+	t.Setenv("POD_IP", "172.27.0.1")
+	t.Setenv("RACK_NAME", "r1")
+	nodeInfo, err := parseNodeInfo()
+	require.NoError(err)
+	require.NotNil(nodeInfo)
+
+	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
+
+	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
+
+	yamlFile, err := os.ReadFile(yamlPath)
+	require.NoError(err)
+
+	// Unmarshal, Marshal to remove all comments (and some fields if necessary)
+	cassandraYaml := make(map[string]interface{})
+	require.NoError(yaml.Unmarshal(yamlFile, cassandraYaml))
+
+	authenticator := cassandraYaml["authenticator"]
+	require.Equal("com.datastax.bdp.cassandra.auth.DseAuthenticator", authenticator)
+	require.Equal(false, cassandraYaml["auto_snapshot"])
+	require.Equal(false, cassandraYaml["rpc_keepalive"])
+}
+
 func TestRackProperties(t *testing.T) {
 	require := require.New(t)
 	propertiesDir := filepath.Join(envtest.RootDir(), "testfiles")
@@ -421,6 +540,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	require.Contains(s, "-Dcom.sun.management.jmxremote.authenticate=true")
 
 	s11, err := readJvmServerOptions(inputFile11)
+
 	require.NoError(err)
 
 	require.Contains(s11, "-XX:MaxGCPauseMillis=350")
@@ -478,16 +598,102 @@ func TestServerOptionsOutput(t *testing.T) {
 func TestGCOptions(t *testing.T) {
 	assert := assert.New(t)
 	assert.Equal(defaultG1Settings, getGCOptions("G1GC", 11))
-	assert.Equal(defaultG1Settings, getGCOptions("G1GC", 17))
+	assert.Equal([]string{"-XX:+UseG1GC"}, getGCOptions("G1GC", 17))
 
 	assert.Equal(defaultCMSSettings, getGCOptions("CMS", 11))
-	assert.Equal(defaultCMSSettings, getGCOptions("CMS", 17))
+	assert.Equal([]string{}, getGCOptions("CMS", 17))
 
 	assert.Equal([]string{"-XX:+UseShenandoahGC"}, getGCOptions("Shenandoah", 11))
 	assert.Equal([]string{"-XX:+UseShenandoahGC"}, getGCOptions("Shenandoah", 17))
 
 	assert.Equal([]string{"-XX:+UnlockExperimentalVMOptions", "-XX:+UseZGC"}, getGCOptions("ZGC", 11))
 	assert.Equal([]string{"-XX:+UseZGC"}, getGCOptions("ZGC", 17))
+}
+
+func TestJVM17GarbageCollectorOptions(t *testing.T) {
+	require := require.New(t)
+	optionsDir := filepath.Join(envtest.RootDir(), "testfiles")
+
+	// Test G1GC for JVM17
+	tempDirG1, err := os.MkdirTemp("", "jvm17-g1gc-test")
+	require.NoError(err)
+	defer os.RemoveAll(tempDirG1)
+
+	ciG1 := &ConfigInput{
+		ServerOptions17: map[string]interface{}{
+			"garbage_collector": "G1GC",
+		},
+	}
+
+	require.NoError(createJVMOptions(ciG1, optionsDir, tempDirG1))
+
+	jvm17FileG1 := filepath.Join(tempDirG1, "jvm17-server.options")
+	optionsG1, err := readJvmServerOptions(jvm17FileG1)
+	require.NoError(err)
+
+	g1gcFound := false
+	for _, opt := range optionsG1 {
+		if opt == "-XX:+UseG1GC" {
+			g1gcFound = true
+		}
+		require.NotEqual("-XX:+UseZGC", opt)
+		require.NotEqual("-XX:+UseShenandoahGC", opt)
+	}
+	require.True(g1gcFound, "G1GC option should be present")
+
+	// Test ZGC for JVM17
+	tempDirZ, err := os.MkdirTemp("", "jvm17-zgc-test")
+	require.NoError(err)
+	defer os.RemoveAll(tempDirZ)
+
+	ciZ := &ConfigInput{
+		ServerOptions17: map[string]interface{}{
+			"garbage_collector": "ZGC",
+		},
+	}
+
+	require.NoError(createJVMOptions(ciZ, optionsDir, tempDirZ))
+
+	jvm17FileZ := filepath.Join(tempDirZ, "jvm17-server.options")
+	optionsZ, err := readJvmServerOptions(jvm17FileZ)
+	require.NoError(err)
+
+	zgcFound := false
+	for _, opt := range optionsZ {
+		if opt == "-XX:+UseZGC" {
+			zgcFound = true
+		}
+		require.NotEqual("-XX:+UseG1GC", opt)
+		require.NotEqual("-XX:+UseShenandoahGC", opt)
+	}
+	require.True(zgcFound, "ZGC option should be present")
+
+	// Test Shenandoah for JVM17
+	tempDirS, err := os.MkdirTemp("", "jvm17-shenandoah-test")
+	require.NoError(err)
+	defer os.RemoveAll(tempDirS)
+
+	ciS := &ConfigInput{
+		ServerOptions17: map[string]interface{}{
+			"garbage_collector": "Shenandoah",
+		},
+	}
+
+	require.NoError(createJVMOptions(ciS, optionsDir, tempDirS))
+
+	jvm17FileS := filepath.Join(tempDirS, "jvm17-server.options")
+	optionsS, err := readJvmServerOptions(jvm17FileS)
+	require.NoError(err)
+
+	shenandoahFound := false
+	for _, opt := range optionsS {
+		if opt == "-XX:+UseShenandoahGC" {
+			shenandoahFound = true
+		}
+		require.NotEqual("-XX:+UseG1GC", opt)
+		require.NotEqual("-XX:+UseZGC", opt)
+	}
+	require.True(shenandoahFound, "Shenandoah option should be present")
 }
 
 func TestCassandraEnv(t *testing.T) {
@@ -536,6 +742,66 @@ func TestReadOptionsWithNumeric(t *testing.T) {
 	require.NoError(err)
 
 	require.Contains(lines, "-Xmx524288000")
+}
+
+func TestCass50GCOverrides(t *testing.T) {
+	require := require.New(t)
+	cassYamlDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+	require.NoError(err)
+
+	defer os.RemoveAll(tempDir)
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", cass50ConfigJDK17OverrideGC)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+	t.Setenv("POD_IP", "172.27.0.1")
+	t.Setenv("RACK_NAME", "r1")
+	nodeInfo, err := parseNodeInfo()
+	require.NoError(err)
+	require.NotNil(nodeInfo)
+
+	require.NoError(createJVMOptions(configInput, cassYamlDir, tempDir))
+
+	jvm17OptionsFile := filepath.Join(tempDir, "jvm17-server.options")
+	options, err := readJvmServerOptions(jvm17OptionsFile)
+	require.NoError(err)
+
+	require.NotContains(options, "-XX:+UseZGC")
+	require.NotContains(options, "-XX:+UseG1GC")
+	require.Contains(options, "-XX:+UseShenandoahGC")
+}
+
+func TestCass50GCOverridesAdditionalOpts(t *testing.T) {
+	require := require.New(t)
+	cassYamlDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir, err := os.MkdirTemp("", "client-test")
+	require.NoError(err)
+
+	defer os.RemoveAll(tempDir)
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", cass50ConfigJDK17OverrideGCFromAdditionalOpts)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+	t.Setenv("POD_IP", "172.27.0.1")
+	t.Setenv("RACK_NAME", "r1")
+	nodeInfo, err := parseNodeInfo()
+	require.NoError(err)
+	require.NotNil(nodeInfo)
+
+	require.NoError(createJVMOptions(configInput, cassYamlDir, tempDir))
+
+	jvm17OptionsFile := filepath.Join(tempDir, "jvm17-server.options")
+	options, err := readJvmServerOptions(jvm17OptionsFile)
+	require.NoError(err)
+
+	require.Contains(options, "-XX:+UseZGC")
+	require.NotContains(options, "-XX:+UseG1GC")
+	require.NotContains(options, "-XX:+UseShenandoahGC")
 }
 
 // readFileToLines is a small test helper, reads file to []string (per line). This version does not filter anything, not even whitespace.

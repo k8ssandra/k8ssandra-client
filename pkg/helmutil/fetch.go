@@ -1,6 +1,7 @@
 package helmutil
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -20,6 +21,12 @@ import (
 
 // DownloadChartRelease fetches the k8ssandra target version and extracts it to a directory which path is returned
 func DownloadChartRelease(repoName, repoURL, chartName, chartVersion string, options ...getter.Option) (string, error) {
+	// Check if the repo URL is an OCI registry
+	if strings.HasPrefix(repoURL, "oci://") {
+		return "", errors.New("OCI registry support is not implemented in this function")
+	}
+
+	// Regular HTTP(S) repository flow
 	// Unfortunately, the helm's chart pull command uses "internal" marked structs, so it can't be used for
 	// pulling the data. Thus, we need to replicate the implementation here and use our own cache
 	settings := cli.New()
