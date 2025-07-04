@@ -1,5 +1,5 @@
 # Build the binary
-FROM golang:1.23 AS builder
+FROM golang:1.24 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -44,7 +44,7 @@ WORKDIR /workspace
 RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION:-4.45.4}/yq_${TARGETOS:-linux}_${TARGETARCH:-amd64}" -o yq
 
 # Build the UBI image
-FROM redhat/ubi9-minimal:latest
+FROM redhat/ubi9-micro:latest
 
 ARG VERSION
 
