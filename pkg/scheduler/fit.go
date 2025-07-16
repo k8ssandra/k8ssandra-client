@@ -61,7 +61,7 @@ func TryScheduling(ctx context.Context, cli client.Client, proposedPods []*corev
 
 	state := framework.NewCycleState()
 
-	schedulablePlugin, err := nodeunschedulable.New(ctx, nil, nil)
+	schedulablePlugin, err := nodeunschedulable.New(ctx, nil, nil, plfeature.Features{})
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func TryScheduling(ctx context.Context, cli client.Client, proposedPods []*corev
 		return err
 	}
 
-	nodeaffinityPlugin, err := nodeaffinity.New(ctx, &config.NodeAffinityArgs{}, nil)
+	nodeaffinityPlugin, err := nodeaffinity.New(ctx, &config.NodeAffinityArgs{}, nil, plfeature.Features{})
 	if err != nil {
 		return err
 	}
