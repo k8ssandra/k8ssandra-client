@@ -30,10 +30,10 @@ ARG KUBE_VERSION
 RUN cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v${KUBE_VERSION:-1.32}/rpm/
+baseurl=https://pkgs.k8s.io/core:/stable:/v${KUBE_VERSION:-1.33}/rpm/
 enabled=1
 gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v${KUBE_VERSION:-1.32}/rpm/repodata/repomd.xml.key
+gpgkey=https://pkgs.k8s.io/core:/stable:/v${KUBE_VERSION:-1.33}/rpm/repodata/repomd.xml.key
 EOF
 
 RUN microdnf install -y kubectl
@@ -41,7 +41,7 @@ RUN microdnf install -y kubectl
 WORKDIR /workspace
 
 # Install yq
-RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION:-4.45.4}/yq_${TARGETOS:-linux}_${TARGETARCH:-amd64}" -o yq
+RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION:-4.47.1}/yq_${TARGETOS:-linux}_${TARGETARCH:-amd64}" -o yq
 
 # Build the UBI image
 FROM redhat/ubi9-micro:latest
