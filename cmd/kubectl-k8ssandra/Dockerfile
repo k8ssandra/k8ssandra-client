@@ -30,18 +30,19 @@ ARG KUBE_VERSION
 RUN cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v${KUBE_VERSION:-1.32}/rpm/
+baseurl=https://pkgs.k8s.io/core:/stable:/v${KUBE_VERSION:-1.33}/rpm/
 enabled=1
 gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v${KUBE_VERSION:-1.32}/rpm/repodata/repomd.xml.key
+gpgkey=https://pkgs.k8s.io/core:/stable:/v${KUBE_VERSION:-1.33}/rpm/repodata/repomd.xml.key
 EOF
 
-RUN microdnf install -y kubectl
+RUN microdnf update -y
+RUN microdnf install --nodocs -y kubectl ca-certificates
 
 WORKDIR /workspace
 
 # Install yq
-RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION:-4.45.4}/yq_${TARGETOS:-linux}_${TARGETARCH:-amd64}" -o yq
+RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION:-4.47.1}/yq_${TARGETOS:-linux}_${TARGETARCH:-amd64}" -o yq
 
 # Build the UBI image
 FROM redhat/ubi9-micro:latest
@@ -59,6 +60,7 @@ LABEL description="Part of the toolset for the DataStax Kubernetes Operator for 
 WORKDIR /
 COPY --from=builder /workspace/kubectl-k8ssandra .
 COPY --from=builder --chown=65532:65532 /workspace/build/ .cache/
+COPY --from=ubi-builder /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/pki/ca-trust/extracted/pem/
 COPY --from=ubi-builder --chown=65532:65532 --chmod=755 /workspace/yq /usr/bin/yq
 COPY --from=ubi-builder /usr/bin/kubectl /usr/bin/kubectl
 COPY ./LICENSE /licenses/
