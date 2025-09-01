@@ -137,7 +137,7 @@ func (e *Environment) Stop() {
 
 func (e *Environment) CreateNamespace(t *testing.T) string {
 	namespace := strings.ToLower(t.Name())
-	if err := kubernetes.CreateNamespaceIfNotExists(e.client, namespace); err != nil {
+	if err := kubernetes.CreateNamespaceIfNotExists(t.Context(), e.client, namespace); err != nil {
 		t.FailNow()
 	}
 

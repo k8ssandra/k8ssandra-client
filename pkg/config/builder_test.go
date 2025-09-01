@@ -2,7 +2,6 @@ package config
 
 import (
 	"bufio"
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -251,7 +250,7 @@ func TestBuild(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	b := NewBuilder(inputDir, tempDir, "")
-	require.NoError(b.Build(context.TODO()))
+	require.NoError(b.Build(t.Context()))
 
 	// Verify that all target files are there..
 	entries, err := os.ReadDir(tempDir)
@@ -888,7 +887,7 @@ func TestPerPodOverridesAppliedAfterK8ssandraOverrides(t *testing.T) {
 	defer os.RemoveAll(outputDir)
 
 	b := NewBuilder(inputDir, outputDir, "")
-	require.NoError(b.Build(context.TODO()))
+	require.NoError(b.Build(t.Context()))
 
 	// Load the resulting cassandra.yaml and verify per-pod overrides won
 	yamlPath := filepath.Join(outputDir, "cassandra.yaml")
@@ -938,7 +937,7 @@ func TestPerPodOverridesMergeJvmOptions(t *testing.T) {
 	defer os.RemoveAll(outputDir)
 
 	b := NewBuilder(inputDir, outputDir, "")
-	require.NoError(b.Build(context.TODO()))
+	require.NoError(b.Build(t.Context()))
 
 	lines, err := readFileToLines(outputDir, "jvm-server.options")
 	require.NoError(err)

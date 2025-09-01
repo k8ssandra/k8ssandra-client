@@ -1,7 +1,6 @@
 package cassdcutil
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -44,7 +43,7 @@ func TestCassandraAuthDetails(t *testing.T) {
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(cassdc, secret).Build()
 	cassManager := &CassManager{client: client}
 
-	authDetails, err := cassManager.CassandraAuthDetails(context.TODO(), cassdc)
+	authDetails, err := cassManager.CassandraAuthDetails(t.Context(), cassdc)
 	assert.NoError(err)
 	assert.NotNil(authDetails)
 
