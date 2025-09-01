@@ -198,7 +198,7 @@ var removeAllocateTokens = `
 
 func TestBuilderDefaults(t *testing.T) {
 	require := require.New(t)
-	builder := NewBuilder("", "")
+	builder := NewBuilder("", "", "")
 	require.Equal(defaultInputDir, builder.configInputDir)
 	require.Equal(defaultOutputDir, builder.configOutputDir)
 }
@@ -267,7 +267,7 @@ func TestBuild(t *testing.T) {
 	inputDir := filepath.Join(envtest.RootDir(), "testfiles")
 	tempDir := t.TempDir()
 
-	b := NewBuilder(inputDir, tempDir)
+	b := NewBuilder(inputDir, tempDir, "")
 	require.NoError(b.Build(t.Context()))
 
 	// Verify that all target files are there..
@@ -305,7 +305,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
+	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir, nil))
 
 	yamlOrigPath := filepath.Join(cassYamlDir, "cassandra_latest.yaml")
 	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
@@ -378,8 +378,8 @@ func TestCassandraBaseConfigFilePick(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createCassandraYaml(configInput, nodeInfo, inputDirOld, outputDirOld))
-	require.NoError(createCassandraYaml(configInput, nodeInfo, inputDirNew, outputDirNew))
+	require.NoError(createCassandraYaml(configInput, nodeInfo, inputDirOld, outputDirOld, nil))
+	require.NoError(createCassandraYaml(configInput, nodeInfo, inputDirNew, outputDirNew, nil))
 
 	// Verify only cassandra.yaml is created to destination
 	entriesOld, err := os.ReadDir(outputDirOld)
@@ -428,7 +428,7 @@ func TestCassandraYamlSubPath(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
+	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir, nil))
 
 	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
 
@@ -460,7 +460,7 @@ func TestBooleanOverride(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
+	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir, nil))
 
 	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
 
@@ -494,7 +494,7 @@ func TestNilOverride(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
+	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir, nil))
 
 	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
 
@@ -544,7 +544,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(configInput)
 
-	require.NoError(createJVMOptions(configInput, optionsDir, tempDir))
+	require.NoError(createJVMOptions(configInput, optionsDir, tempDir, &ConfigInput{}))
 
 	inputFile := filepath.Join(tempDir, "jvm-server.options")
 	inputFile11 := filepath.Join(tempDir, "jvm11-server.options")
@@ -581,7 +581,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	// Test empty also and check we get the default G1 settings
 	ci := &ConfigInput{}
 	tempDir2 := t.TempDir()
-	require.NoError(createJVMOptions(ci, optionsDir, tempDir2))
+	require.NoError(createJVMOptions(ci, optionsDir, tempDir2, &ConfigInput{}))
 
 	inputFile11 = filepath.Join(tempDir2, "jvm11-server.options")
 
@@ -600,7 +600,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	}
 
 	tempDir3 := t.TempDir()
-	require.NoError(createJVMOptions(ci, optionsDir, tempDir3))
+	require.NoError(createJVMOptions(ci, optionsDir, tempDir3, &ConfigInput{}))
 
 	inputFile11 = filepath.Join(tempDir3, "jvm11-server.options")
 
@@ -640,7 +640,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 		},
 	}
 
-	require.NoError(createJVMOptions(ciG1, optionsDir, tempDirG1))
+	require.NoError(createJVMOptions(ciG1, optionsDir, tempDirG1, &ConfigInput{}))
 
 	jvm17FileG1 := filepath.Join(tempDirG1, "jvm17-server.options")
 	optionsG1, err := readJvmServerOptions(jvm17FileG1)
@@ -665,7 +665,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 		},
 	}
 
-	require.NoError(createJVMOptions(ciZ, optionsDir, tempDirZ))
+	require.NoError(createJVMOptions(ciZ, optionsDir, tempDirZ, &ConfigInput{}))
 
 	jvm17FileZ := filepath.Join(tempDirZ, "jvm17-server.options")
 	optionsZ, err := readJvmServerOptions(jvm17FileZ)
@@ -690,7 +690,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 		},
 	}
 
-	require.NoError(createJVMOptions(ciS, optionsDir, tempDirS))
+	require.NoError(createJVMOptions(ciS, optionsDir, tempDirS, &ConfigInput{}))
 
 	jvm17FileS := filepath.Join(tempDirS, "jvm17-server.options")
 	optionsS, err := readJvmServerOptions(jvm17FileS)
@@ -741,7 +741,7 @@ func TestReadOptionsWithNumeric(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(configInput)
 
-	require.NoError(createJVMOptions(configInput, optionsDir, tempDir))
+	require.NoError(createJVMOptions(configInput, optionsDir, tempDir, &ConfigInput{}))
 
 	lines, err := readFileToLines(tempDir, "jvm-server.options")
 	require.NoError(err)
@@ -765,7 +765,7 @@ func TestCass50GCOverrides(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createJVMOptions(configInput, cassYamlDir, tempDir))
+	require.NoError(createJVMOptions(configInput, cassYamlDir, tempDir, &ConfigInput{}))
 
 	jvm17OptionsFile := filepath.Join(tempDir, "jvm17-server.options")
 	options, err := readJvmServerOptions(jvm17OptionsFile)
@@ -792,7 +792,7 @@ func TestCass50GCOverridesAdditionalOpts(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createJVMOptions(configInput, cassYamlDir, tempDir))
+	require.NoError(createJVMOptions(configInput, cassYamlDir, tempDir, &ConfigInput{}))
 
 	jvm17OptionsFile := filepath.Join(tempDir, "jvm17-server.options")
 	options, err := readJvmServerOptions(jvm17OptionsFile)
@@ -841,4 +841,105 @@ func TestCopyFiles(t *testing.T) {
 	// We should have tempDir/jvm11-clients.options
 	_, err := os.Stat(filepath.Join(tempDir, "jvm11-clients.options"))
 	require.NoError(err)
+}
+
+// Helper to copy all files from a directory (non-recursive) for tests
+func copyAllFiles(t *testing.T, srcDir, dstDir string) {
+	t.Helper()
+	entries, err := os.ReadDir(srcDir)
+	require.NoError(t, err)
+	for _, e := range entries {
+		if e.IsDir() {
+			// Only copy top-level files used by builder; subdirs are not required here
+			continue
+		}
+		require.NoError(t, copyFile(filepath.Join(srcDir, e.Name()), filepath.Join(dstDir, e.Name())))
+	}
+}
+
+func TestPerPodOverridesAppliedAfterK8ssandraOverrides(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	// Prepare input dir with base config files plus per-pod override
+	baseDir := filepath.Join(envtest.RootDir(), "testfiles")
+	inputDir := t.TempDir()
+	copyAllFiles(t, baseDir, inputDir)
+
+	// Create per-pod override that sets IPs explicitly
+	podName := "pod-a"
+	override := `cassandra-yaml:
+  listen_address: "1.2.3.4"
+  rpc_address: "1.2.3.5"
+  broadcast_rpc_address: "1.2.3.6"
+`
+	require.NoError(os.MkdirAll(filepath.Join(inputDir, defaultPodSpecificDir), 0755))
+	require.NoError(os.WriteFile(filepath.Join(inputDir, defaultPodSpecificDir, podName+".yaml"), []byte(override), 0600))
+
+	// Standard inputs
+	t.Setenv("CONFIG_FILE_DATA", existingConfig)
+	t.Setenv("POD_NAME", podName)
+	t.Setenv("POD_IP", "172.27.0.1")
+	t.Setenv("RACK_NAME", "r1")
+
+	outputDir := t.TempDir()
+	b := NewBuilder(inputDir, outputDir, "")
+	require.NoError(b.Build(t.Context()))
+
+	// Load the resulting cassandra.yaml and verify per-pod overrides won
+	yamlPath := filepath.Join(outputDir, "cassandra.yaml")
+	contents, err := os.ReadFile(yamlPath)
+	require.NoError(err)
+
+	out := make(map[string]interface{})
+	require.NoError(yaml.Unmarshal(contents, out))
+
+	assert.Equal("1.2.3.4", out["listen_address"])
+	assert.Equal("1.2.3.5", out["rpc_address"])
+	// broadcast_rpc_address may be string or net.IP marshaled; ensure string match when marshaled
+	switch v := out["broadcast_rpc_address"].(type) {
+	case string:
+		assert.Equal("1.2.3.6", v)
+	default:
+		// If not a plain string, marshal back to YAML string and compare contains
+		b, _ := yaml.Marshal(map[string]any{"broadcast_rpc_address": v})
+		assert.Contains(string(b), "1.2.3.6")
+	}
+}
+
+func TestPerPodOverridesMergeJvmOptions(t *testing.T) {
+	require := require.New(t)
+
+	baseDir := filepath.Join(envtest.RootDir(), "testfiles")
+	inputDir := t.TempDir()
+	copyAllFiles(t, baseDir, inputDir)
+
+	// Additional JVM opt via per-pod override
+	podName := "pod-b"
+	override := `jvm-server-options:
+  additional-jvm-opts:
+  - "-Dcom.example.flag=true"
+`
+	require.NoError(os.MkdirAll(filepath.Join(inputDir, defaultPodSpecificDir), 0755))
+	require.NoError(os.WriteFile(filepath.Join(inputDir, defaultPodSpecificDir, podName+".yaml"), []byte(override), 0600))
+
+	// Standard inputs
+	t.Setenv("CONFIG_FILE_DATA", existingConfig)
+	t.Setenv("POD_NAME", podName)
+
+	outputDir := t.TempDir()
+	b := NewBuilder(inputDir, outputDir, "")
+	require.NoError(b.Build(t.Context()))
+
+	lines, err := readFileToLines(outputDir, "jvm-server.options")
+	require.NoError(err)
+	// Ensure the new flag is present
+	found := false
+	for _, l := range lines {
+		if l == "-Dcom.example.flag=true" {
+			found = true
+			break
+		}
+	}
+	require.True(found, "expected additional per-pod JVM option to be present")
 }

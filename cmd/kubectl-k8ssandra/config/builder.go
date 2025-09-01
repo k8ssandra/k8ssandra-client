@@ -20,8 +20,9 @@ type builderOptions struct {
 	configFlags *genericclioptions.ConfigFlags
 	genericclioptions.IOStreams
 
-	inputDir  string
-	outputDir string
+	inputDir    string
+	podSpecific string
+	outputDir   string
 }
 
 func newBuilderOptions(streams genericclioptions.IOStreams) *builderOptions {
@@ -56,6 +57,7 @@ func NewBuilderCmd(streams genericclioptions.IOStreams) *cobra.Command {
 
 	fl := cmd.Flags()
 	fl.StringVar(&o.inputDir, "input", "", "read config files from this directory instead of default")
+	fl.StringVar(&o.podSpecific, "override", "", "read overrides from this directory instead of default")
 	fl.StringVar(&o.outputDir, "output", "", "write config files to this directory instead of default")
 	o.configFlags.AddFlags(fl)
 	return cmd
@@ -78,6 +80,6 @@ func (c *builderOptions) Validate() error {
 func (c *builderOptions) Run() error {
 	ctx := context.Background()
 
-	builder := config.NewBuilder(c.inputDir, c.outputDir)
+	builder := config.NewBuilder(c.inputDir, c.outputDir, c.podSpecific)
 	return builder.Build(ctx)
 }
