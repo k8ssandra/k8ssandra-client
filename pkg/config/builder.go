@@ -27,6 +27,9 @@ const (
 	// $CASSANDRA_CONF could modify this, but we override it in the mgmt-api
 	defaultInputDir = "/cassandra-base-config"
 
+	// default directory under configInputDir which could include per pod modifications to the configuration
+	defaultPodSpecificDir = "override"
+
 	// docker-entrypoint.sh will copy the files from here, so we need all the outputs to target this
 	defaultOutputDir = "/config"
 
@@ -37,12 +40,14 @@ const (
 type Builder struct {
 	configInputDir  string
 	configOutputDir string
+	podSpecificDir  string
 }
 
-func NewBuilder(overrideConfigInput, overrideConfigOutput string) *Builder {
+func NewBuilder(overrideConfigInput, overrideConfigOutput, overridePodSpecificDir string) *Builder {
 	b := &Builder{
 		configInputDir:  defaultInputDir,
 		configOutputDir: defaultOutputDir,
+		podSpecificDir:  defaultPodSpecificDir,
 	}
 
 	if overrideConfigInput != "" {
@@ -51,6 +56,10 @@ func NewBuilder(overrideConfigInput, overrideConfigOutput string) *Builder {
 
 	if overrideConfigOutput != "" {
 		b.configOutputDir = overrideConfigOutput
+	}
+
+	if overridePodSpecificDir != "" {
+		b.podSpecificDir = overridePodSpecificDir
 	}
 
 	return b
@@ -72,6 +81,26 @@ func (b *Builder) Build(ctx context.Context) error {
 		return err
 	}
 
+	// Read optional per-pod overrides from inputDir/<POD_NAME>.yaml|json
+	podOverrides, err := readPodOverrides(b.configInputDir, b.podSpecificDir, nodeInfo)
+	if err != nil {
+		return err
+	}
+
+	// Apply non-cassandra.yaml overrides directly into configInput so they participate in standard merging
+	if podOverrides != nil {
+		// Merge cassandra-env options
+		if podOverrides.CassandraEnv.MallocArenaMax > 0 {
+			configInput.CassandraEnv.MallocArenaMax = podOverrides.CassandraEnv.MallocArenaMax
+		}
+		if podOverrides.CassandraEnv.HeapDumpDir != "" {
+			configInput.CassandraEnv.HeapDumpDir = podOverrides.CassandraEnv.HeapDumpDir
+		}
+		if len(podOverrides.CassandraEnv.AdditionalOpts) > 0 {
+			configInput.CassandraEnv.AdditionalOpts = append(configInput.CassandraEnv.AdditionalOpts, podOverrides.CassandraEnv.AdditionalOpts...)
+		}
+	}
+
 	// Create rack information
 	if err := createRackProperties(configInput, nodeInfo, b.configInputDir, b.configOutputDir); err != nil {
 		return err
@@ -82,13 +111,17 @@ func (b *Builder) Build(ctx context.Context) error {
 		return err
 	}
 
-	// Create jvm*-server.options
-	if err := createJVMOptions(configInput, b.configInputDir, b.configOutputDir); err != nil {
+	// Create jvm*-server.options (merge per-pod overrides inside the helper)
+	if err := createJVMOptions(configInput, b.configInputDir, b.configOutputDir, podOverrides); err != nil {
 		return err
 	}
 
-	// Create cassandra.yaml
-	if err := createCassandraYaml(configInput, nodeInfo, b.configInputDir, b.configOutputDir); err != nil {
+	// Create cassandra.yaml (apply per-pod overrides at the very end)
+	var finalCassYaml map[string]interface{}
+	if podOverrides != nil {
+		finalCassYaml = podOverrides.CassYaml
+	}
+	if err := createCassandraYaml(configInput, nodeInfo, b.configInputDir, b.configOutputDir, finalCassYaml); err != nil {
 		return err
 	}
 
@@ -104,9 +137,13 @@ func (b *Builder) Build(ctx context.Context) error {
 
 func parseConfigInput() (*ConfigInput, error) {
 	configInputStr := os.Getenv("CONFIG_FILE_DATA")
+	return parseConfigInputFromData(configInputStr)
+}
+
+func parseConfigInputFromData(data string) (*ConfigInput, error) {
 	configInput := &ConfigInput{}
 
-	d := json.NewDecoder(strings.NewReader(configInputStr))
+	d := json.NewDecoder(strings.NewReader(data))
 	d.UseNumber() // This decodes the numbers as strings
 	if err := d.Decode(configInput); err != nil {
 		return nil, err
@@ -117,8 +154,10 @@ func parseConfigInput() (*ConfigInput, error) {
 
 func parseNodeInfo() (*NodeInfo, error) {
 	rackName := os.Getenv("RACK_NAME")
+	podName := os.Getenv("POD_NAME")
 
 	n := &NodeInfo{
+		Name: podName,
 		Rack: rackName,
 	}
 
@@ -229,14 +268,20 @@ func createCassandraEnv(configInput *ConfigInput, sourceDir, targetDir string) e
 }
 
 // createJVMOptions writes all the jvm*-server.options
-func createJVMOptions(configInput *ConfigInput, sourceDir, targetDir string) error {
-	if err := createServerJVMOptions(configInput.ServerOptions, "jvm-server.options", sourceDir, targetDir); err != nil {
+func createJVMOptions(configInput *ConfigInput, sourceDir, targetDir string, podOverrides *ConfigInput) error {
+	if err := createServerJVMOptions(configInput.ServerOptions, podOverrides.ServerOptions, "jvm-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
-	if err := createServerJVMOptions(configInput.ServerOptions11, "jvm11-server.options", sourceDir, targetDir); err != nil {
+
+	if err := createServerJVMOptions(configInput.ServerOptions11, podOverrides.ServerOptions11, "jvm11-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
-	if err := createServerJVMOptions(configInput.ServerOptions17, "jvm17-server.options", sourceDir, targetDir); err != nil {
+
+	if err := createServerJVMOptions(configInput.ServerOptions17, podOverrides.ServerOptions17, "jvm17-server.options", sourceDir, targetDir); err != nil {
+		return err
+	}
+
+	if err := createServerJVMOptions(configInput.ServerOptions21, podOverrides.ServerOptions21, "jvm21-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
 
@@ -255,12 +300,42 @@ func optionsFilenameToMap(filename string) map[string]metadata.Metadata {
 	}
 }
 
-func createServerJVMOptions(options map[string]interface{}, filename, sourceDir, targetDir string) error {
+func createServerJVMOptions(baseOptions, overrideOptions map[string]interface{}, filename, sourceDir, targetDir string) error {
 	// Read the current jvm-server-options as []string, do linear search to replace the values with the inputs we get
 	optionsPath := filepath.Join(sourceDir, filename)
 	currentOptions, err := readJvmServerOptions(optionsPath)
 	if err != nil {
 		return err
+	}
+
+	options := make(map[string]interface{})
+	for k, v := range baseOptions {
+		options[k] = v
+	}
+
+	// We could have this logic in the next section also, but I feel like it's easier to read if separated
+	if overrideAddOpts, found := overrideOptions["additional-jvm-opts"]; found {
+		if addOpts, found := options["additional-jvm-opts"]; found {
+
+			addOptsSlice, okA := addOpts.([]interface{})
+			overrideAddOptsSlice, okB := overrideAddOpts.([]interface{})
+
+			if !okA || !okB {
+				return fmt.Errorf("additional-jvm-opts must be a list of strings")
+			}
+
+			options["additional-jvm-opts"] = append(addOptsSlice, overrideAddOptsSlice...)
+		} else {
+			// The original options had no additional-jvm-opts, we use our value as is
+			options["additional-jvm-opts"] = overrideAddOpts
+		}
+	}
+
+	for k, v := range overrideOptions {
+		if k == "additional-jvm-opts" || k == "garbage_collector" {
+			continue
+		}
+		options[k] = v
 	}
 
 	targetOptions := make([]string, 0, len(currentOptions)+len(options))
@@ -304,10 +379,6 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 				targetOptions = append(targetOptions, outputVal.Output(fmt.Sprintf("%v", v)))
 			}
 		}
-	}
-
-	if options == nil {
-		options = make(map[string]interface{})
 	}
 
 	// If filename matches jvm.*-server.options and has garbage_collector setting
@@ -361,6 +432,11 @@ curOptions:
 			}
 		}
 		targetOptions = append(targetOptions, v)
+	}
+
+	if len(targetOptions) == 0 {
+		// Nothing to write; skip creating an empty file
+		return nil
 	}
 
 	targetFileT := filepath.Join(targetDir, filename)
@@ -502,9 +578,51 @@ func readJvmServerOptions(path string) ([]string, error) {
 	return options, nil
 }
 
+// readPodOverrides attempts to read per-pod overrides from inputDir/<POD_NAME>.yaml or .json.
+// Returns nil if no overrides are present.
+func readPodOverrides(inputDir, podSpecificDir string, nodeInfo *NodeInfo) (*ConfigInput, error) {
+	override := &ConfigInput{}
+	if nodeInfo.Name == "" {
+		return override, nil
+	}
+
+	podConfigPrefix := filepath.Join(inputDir, podSpecificDir, nodeInfo.Name)
+
+	// While YAML is not the format that CONFIG_FILE_DATA supports from cass-operator,
+	// we prefer this way of formatting if users are manually creating the overrides instead of the operator.
+	// We still prefer the same format as CONFIG_FILE_DATA as the primary one
+	yamlPath := podConfigPrefix + ".yaml"
+	jsonPath := podConfigPrefix + ".json"
+
+	if _, err := os.Stat(jsonPath); err == nil {
+		data, err := os.ReadFile(jsonPath)
+		if err != nil {
+			return nil, err
+		}
+		return parseConfigInputFromData(string(data))
+	}
+
+	if _, err := os.Stat(yamlPath); err != nil {
+		return nil, nil
+	}
+
+	data, err := os.ReadFile(yamlPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := yaml.Unmarshal(data, override); err != nil {
+		return nil, err
+	}
+
+	return override, nil
+}
+
+// mergeOptionsWithAdditions removed — merging handled inside createServerJVMOptions
+
 // cassandra.yaml related functions
 
-func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string) error {
+func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string, finalOverrides map[string]interface{}) error {
 	targetConfigFileName := oldCassandraConfigName
 	// Verify if we should use cassandra_latest.yaml (5.0 and newer) or cassandra.yaml (4.1 and older)
 	if _, err := os.Stat(filepath.Join(sourceDir, latestCassandraConfigName)); err == nil {
@@ -544,6 +662,22 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 	// Take the NodeInfo information and add those modifications to the merge output (a priority)
 	// Take the mandatory changes we require and merge them (a priority again)
 	merged = k8ssandraOverrides(merged, configInput, nodeInfo)
+
+	// Apply per-pod final overrides last (highest priority)
+	if len(finalOverrides) > 0 {
+		merged2, err := goalesce.DeepMerge(merged, finalOverrides)
+		if err != nil {
+			return err
+		}
+		// Fix boolean false handling for final overrides
+		for k, v := range finalOverrides {
+			rv := reflect.ValueOf(v)
+			if rv.Kind() == reflect.Bool {
+				merged2[k] = rv.Bool()
+			}
+		}
+		merged = merged2
+	}
 
 	// Write to the targetDir the new modified file
 	targetFile := filepath.Join(targetDir, "cassandra.yaml")
