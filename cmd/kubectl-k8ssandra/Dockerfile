@@ -60,10 +60,12 @@ LABEL description="Part of the toolset for the DataStax Kubernetes Operator for 
 WORKDIR /
 COPY --from=builder /workspace/kubectl-k8ssandra .
 COPY --from=builder --chown=65532:65532 /workspace/build/ .cache/
-COPY --from=ubi-builder /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/pki/ca-trust/extracted/pem/
+COPY --from=ubi-builder /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/pki/ca-trust/source/anchors/
 COPY --from=ubi-builder --chown=65532:65532 --chmod=755 /workspace/yq /usr/bin/yq
 COPY --from=ubi-builder /usr/bin/kubectl /usr/bin/kubectl
 COPY ./LICENSE /licenses/
+
+RUN update-ca-trust
 
 USER 65532:65532
 
