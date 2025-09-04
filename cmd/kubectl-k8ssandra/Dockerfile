@@ -65,6 +65,7 @@ COPY --from=ubi-builder --chown=65532:65532 --chmod=755 /workspace/yq /usr/bin/y
 COPY --from=ubi-builder /usr/bin/kubectl /usr/bin/kubectl
 COPY ./LICENSE /licenses/
 
+FROM ubi-builder
 RUN update-ca-trust
 
 USER 65532:65532
