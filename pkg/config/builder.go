@@ -19,6 +19,7 @@ import (
 	"github.com/adutra/goalesce"
 	metadata "github.com/burmanm/definitions-parser/pkg/types"
 	gentypes "github.com/burmanm/definitions-parser/pkg/types/generated"
+	"github.com/charmbracelet/log"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -80,6 +81,8 @@ func (b *Builder) Build(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	log.Infof("Parsed ConfigInput and NodeInfo for node %s", nodeInfo.Name)
 
 	// Read optional per-pod overrides from inputDir/<POD_NAME>.yaml|json
 	podOverrides, err := readPodOverrides(b.configInputDir, b.podSpecificDir, nodeInfo)
@@ -595,32 +598,26 @@ func readPodOverrides(inputDir, podSpecificDir string, nodeInfo *NodeInfo) (*Con
 	jsonPath := podConfigPrefix + ".json"
 
 	if _, err := os.Stat(jsonPath); err == nil {
+		log.Infof("Found pod-specific JSON overrides at %s", jsonPath)
 		data, err := os.ReadFile(jsonPath)
 		if err != nil {
 			return nil, err
 		}
 		return parseConfigInputFromData(string(data))
-	}
+	} else if _, err := os.Stat(yamlPath); err == nil {
+		log.Infof("Found pod-specific YAML overrides at %s", yamlPath)
+		data, err := os.ReadFile(yamlPath)
+		if err != nil {
+			return nil, err
+		}
 
-	if _, err := os.Stat(yamlPath); err != nil {
-		return nil, nil
-	}
-
-	data, err := os.ReadFile(yamlPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := yaml.Unmarshal(data, override); err != nil {
-		return nil, err
+		if err := yaml.Unmarshal(data, override); err != nil {
+			return nil, err
+		}
 	}
 
 	return override, nil
 }
-
-// mergeOptionsWithAdditions removed — merging handled inside createServerJVMOptions
-
-// cassandra.yaml related functions
 
 func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string, finalOverrides map[string]interface{}) error {
 	targetConfigFileName := oldCassandraConfigName
@@ -629,9 +626,7 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 		targetConfigFileName = latestCassandraConfigName
 	}
 
-	// Read the base file
 	yamlPath := filepath.Join(sourceDir, targetConfigFileName)
-
 	yamlFile, err := os.ReadFile(yamlPath)
 	if err != nil {
 		return err
@@ -644,7 +639,7 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 		return err
 	}
 
-	// Merge with the ConfigInput's cassadraYaml changes - configInput.CassYaml changes have to take priority
+	// Merge with the ConfigInput's cassandraYaml changes - configInput.CassYaml changes have to take priority
 	merged, err := goalesce.DeepMerge(cassandraYaml, configInput.CassYaml)
 	if err != nil {
 		return err
@@ -663,13 +658,13 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 	// Take the mandatory changes we require and merge them (a priority again)
 	merged = k8ssandraOverrides(merged, configInput, nodeInfo)
 
-	// Apply per-pod final overrides last (highest priority)
+	// Apply per-pod final overrides last (highest priority) - these could break the configuration
 	if len(finalOverrides) > 0 {
 		merged2, err := goalesce.DeepMerge(merged, finalOverrides)
 		if err != nil {
 			return err
 		}
-		// Fix boolean false handling for final overrides
+		// Same goalesce "hotfix"
 		for k, v := range finalOverrides {
 			rv := reflect.ValueOf(v)
 			if rv.Kind() == reflect.Bool {
@@ -725,7 +720,7 @@ func writeYaml(doc map[string]interface{}, targetFile string) error {
 
 func copyFiles(sourceDir, targetDir string) error {
 	// Copy the files we're not modifying
-	files := []string{"jvm-clients.options", "jvm11-clients.options", "jvm17-clients.options", "logback.xml", "logback-tools.xml", "jvm-dependent.sh", "jvm.options"}
+	files := []string{"jvm-clients.options", "jvm11-clients.options", "jvm17-clients.options", "logback.xml", "logback-tools.xml", "jvm-dependent.sh", "jvm.options", "cassandra-jaas.config"}
 
 	for _, f := range files {
 		sourceFile := filepath.Join(sourceDir, f)
