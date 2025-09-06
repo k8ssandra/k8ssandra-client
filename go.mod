@@ -1,6 +1,6 @@
 module github.com/k8ssandra/k8ssandra-client
 
-go 1.24.5
+go 1.24.7
 
 require (
 	github.com/Jeffail/gabs/v2 v2.7.0
@@ -11,23 +11,23 @@ require (
 	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/charmbracelet/log v0.4.0
 	github.com/google/uuid v1.6.0
-	github.com/k8ssandra/cass-operator v1.24.1-0.20250716090828-9f4817938c16
-	github.com/k8ssandra/k8ssandra-operator v1.22.0
+	github.com/k8ssandra/cass-operator v1.26.1-0.20250906080335-6dd77704cf7a
+	github.com/k8ssandra/k8ssandra-operator v1.26.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.22.0
-	github.com/prometheus/common v0.62.0
+	github.com/prometheus/client_golang v1.23.0
+	github.com/prometheus/common v0.65.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.18.4
-	k8s.io/api v0.33.3
-	k8s.io/apiextensions-apiserver v0.33.3
-	k8s.io/apimachinery v0.33.3
-	k8s.io/cli-runtime v0.33.3
-	k8s.io/client-go v0.33.3
-	k8s.io/kubectl v0.33.3
-	k8s.io/kubernetes v1.33.3
+	k8s.io/api v0.33.4
+	k8s.io/apiextensions-apiserver v0.33.4
+	k8s.io/apimachinery v0.33.4
+	k8s.io/cli-runtime v0.33.4
+	k8s.io/client-go v0.33.4
+	k8s.io/kubectl v0.33.4
+	k8s.io/kubernetes v1.33.4
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
 	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/kind v0.22.0
@@ -40,7 +40,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.3.0 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
@@ -122,8 +122,8 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rubenv/sql-migrate v1.8.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -138,28 +138,28 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.opentelemetry.io/otel v1.33.0 // indirect
 	go.opentelemetry.io/otel/trace v1.33.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
+	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/mod v0.25.0 // indirect
-	golang.org/x/net v0.41.0 // indirect
-	golang.org/x/oauth2 v0.29.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/term v0.32.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/mod v0.27.0 // indirect
+	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/oauth2 v0.30.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/term v0.34.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/grpc v1.68.1 // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
+	google.golang.org/protobuf v1.36.7 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/apiserver v0.33.3 // indirect
-	k8s.io/component-base v0.33.3 // indirect
-	k8s.io/component-helpers v0.33.3 // indirect
-	k8s.io/controller-manager v0.33.3 // indirect
-	k8s.io/dynamic-resource-allocation v0.33.3 // indirect
+	k8s.io/apiserver v0.33.4 // indirect
+	k8s.io/component-base v0.33.4 // indirect
+	k8s.io/component-helpers v0.33.4 // indirect
+	k8s.io/controller-manager v0.33.4 // indirect
+	k8s.io/dynamic-resource-allocation v0.33.4 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/kube-scheduler v0.29.14 // indirect
