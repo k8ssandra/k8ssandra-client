@@ -27,30 +27,31 @@ import "net"
 // From cass-operator JSON input
 
 type ConfigInput struct {
-	ClusterInfo     ClusterInfo            `json:"cluster-info"`
-	DatacenterInfo  DatacenterInfo         `json:"datacenter-info"`
-	CassYaml        map[string]interface{} `json:"cassandra-yaml,omitempty"`
-	ServerOptions   map[string]interface{} `json:"jvm-server-options,omitempty"`
-	ServerOptions11 map[string]interface{} `json:"jvm11-server-options,omitempty"`
-	ServerOptions17 map[string]interface{} `json:"jvm17-server-options,omitempty"`
-	CassandraEnv    CassandraEnvOptions    `json:"cassandra-env-sh,omitempty"`
+	ClusterInfo     ClusterInfo            `json:"cluster-info" yaml:"cluster-info"`
+	DatacenterInfo  DatacenterInfo         `json:"datacenter-info" yaml:"datacenter-info"`
+	CassYaml        map[string]interface{} `json:"cassandra-yaml,omitempty" yaml:"cassandra-yaml,omitempty"`
+	ServerOptions   map[string]interface{} `json:"jvm-server-options,omitempty" yaml:"jvm-server-options,omitempty"`
+	ServerOptions11 map[string]interface{} `json:"jvm11-server-options,omitempty" yaml:"jvm11-server-options,omitempty"`
+	ServerOptions17 map[string]interface{} `json:"jvm17-server-options,omitempty" yaml:"jvm17-server-options,omitempty"`
+	ServerOptions21 map[string]interface{} `json:"jvm21-server-options,omitempty" yaml:"jvm21-server-options,omitempty"`
+	CassandraEnv    CassandraEnvOptions    `json:"cassandra-env-sh,omitempty" yaml:"cassandra-env-sh,omitempty"`
 
 	// At some point, parse the remaining unknown keys when we decide what to do with them..
 }
 
 type CassandraEnvOptions struct {
-	MallocArenaMax int      `json:"malloc-arena-max,omitempty"`
-	HeapDumpDir    string   `json:"heap-dump-dir,omitempty"`
-	AdditionalOpts []string `json:"additional-jvm-opts,omitempty"`
+	MallocArenaMax int      `json:"malloc-arena-max,omitempty" yaml:"malloc-arena-max,omitempty"`
+	HeapDumpDir    string   `json:"heap-dump-dir,omitempty" yaml:"heap-dump-dir,omitempty"`
+	AdditionalOpts []string `json:"additional-jvm-opts,omitempty" yaml:"additional-jvm-opts,omitempty"`
 }
 
 type ClusterInfo struct {
-	Name  string `json:"name"`
-	Seeds string `json:"seeds"` // comma separated list of seeds
+	Name  string `json:"name" yaml:"name"`
+	Seeds string `json:"seeds" yaml:"seeds"` // comma separated list of seeds
 }
 
 type DatacenterInfo struct {
-	Name string `json:"name"`
+	Name string `json:"name" yaml:"name"`
 
 	// These are ignored for now
 	// "graph-enabled": graphEnabled,
