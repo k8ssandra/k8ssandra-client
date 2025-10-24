@@ -25,6 +25,7 @@ var existingConfig = `
 		"initial_heap_size": "512m",
 		"max_heap_size": "512m",
 		"per_thread_stack_size": "384k",
+        "java_net_prefer_ipv4_stack": "false",
 		"additional-jvm-opts": [
 		"-Dcassandra.system_distributed_replication=test-dc:1",
 		"-Dcom.sun.management.jmxremote.authenticate=true"
@@ -515,6 +516,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	require.Contains(s, "-Xms512m")
 	require.Contains(s, "-Dcassandra.system_distributed_replication=test-dc:1")
 	require.Contains(s, "-Dcom.sun.management.jmxremote.authenticate=true")
+	require.Contains(s, "-Djava.net.preferIPv4Stack=false")
 
 	s11, err := readJvmServerOptions(inputFile11)
 

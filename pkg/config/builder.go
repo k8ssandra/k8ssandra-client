@@ -303,7 +303,7 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 
 		s := optionsFilenameToMap(filename)
 		for k, v := range options {
-			if k == "additional-jvm-opts" || k == "garbage_collector" {
+			if k == "additional-jvm-opts" || k == "garbage_collector" || k == "java_net_prefer_ipv4_stack" {
 				continue
 			}
 
@@ -314,6 +314,11 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 				}
 				targetOptions = append(targetOptions, outputVal.Output(fmt.Sprintf("%v", v)))
 			}
+		}
+
+		// Handle java_net_prefer_ipv4_stack option
+		if ipv4Pref, found := options["java_net_prefer_ipv4_stack"]; found {
+			targetOptions = append(targetOptions, fmt.Sprintf("-Djava.net.preferIPv4Stack=%v", ipv4Pref))
 		}
 	}
 
