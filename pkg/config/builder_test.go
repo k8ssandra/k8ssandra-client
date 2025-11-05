@@ -42,7 +42,9 @@ var existingConfig = `
 		"authorizer": "CassandraAuthorizer",
 		"num_tokens": 256,
 		"role_manager": "CassandraRoleManager",
-		"start_rpc": false
+		"start_rpc": false,
+        "rpc_address": "::1",
+        "rpc_interface_prefer_ipv6": true
 	},
 	"cluster-info": {
 		"name": "test",
@@ -337,6 +339,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.Equal("CassandraRoleManager", cassandraYaml["role_manager"])
 	require.Equal("256", cassandraYaml["num_tokens"])
 	require.Equal(false, cassandraYaml["start_rpc"])
+	require.Equal("::1", cassandraYaml["rpc_address"])
 }
 
 func TestCassandraBaseConfigFilePick(t *testing.T) {
@@ -516,7 +519,6 @@ func TestServerOptionsOutput(t *testing.T) {
 	require.Contains(s, "-Xms512m")
 	require.Contains(s, "-Dcassandra.system_distributed_replication=test-dc:1")
 	require.Contains(s, "-Dcom.sun.management.jmxremote.authenticate=true")
-	require.Contains(s, "-Djava.net.preferIPv4Stack=false")
 
 	s11, err := readJvmServerOptions(inputFile11)
 

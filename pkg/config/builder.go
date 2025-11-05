@@ -303,7 +303,7 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 
 		s := optionsFilenameToMap(filename)
 		for k, v := range options {
-			if k == "additional-jvm-opts" || k == "garbage_collector" || k == "java_net_prefer_ipv4_stack" {
+			if k == "additional-jvm-opts" || k == "garbage_collector" {
 				continue
 			}
 
@@ -314,11 +314,6 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 				}
 				targetOptions = append(targetOptions, outputVal.Output(fmt.Sprintf("%v", v)))
 			}
-		}
-
-		// Handle java_net_prefer_ipv4_stack option
-		if ipv4Pref, found := options["java_net_prefer_ipv4_stack"]; found {
-			targetOptions = append(targetOptions, fmt.Sprintf("-Djava.net.preferIPv4Stack=%v", ipv4Pref))
 		}
 	}
 
@@ -588,7 +583,12 @@ func k8ssandraOverrides(merged map[string]interface{}, configInput *ConfigInput,
 	}
 
 	merged["listen_address"] = nodeInfo.ListenIP.String()
-	merged["rpc_address"] = nodeInfo.RPCIP.String()
+	ipv6 := merged["rpc_interface_prefer_ipv6"]
+	if ipv6Bool, ok := ipv6.(bool); ok && ipv6Bool {
+		merged["rpc_address"] = "::1"
+	} else {
+		merged["rpc_address"] = nodeInfo.RPCIP.String()
+	}
 	delete(merged, "broadcast_address") // Sets it to the same as listen_address
 	merged["broadcast_rpc_address"] = nodeInfo.BroadcastIP
 
