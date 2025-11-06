@@ -339,7 +339,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.Equal("CassandraRoleManager", cassandraYaml["role_manager"])
 	require.Equal("256", cassandraYaml["num_tokens"])
 	require.Equal(false, cassandraYaml["start_rpc"])
-	require.Equal("::1", cassandraYaml["rpc_address"])
+	require.Equal("::", cassandraYaml["rpc_address"])
 }
 
 func TestCassandraBaseConfigFilePick(t *testing.T) {

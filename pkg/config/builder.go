@@ -585,7 +585,7 @@ func k8ssandraOverrides(merged map[string]interface{}, configInput *ConfigInput,
 	merged["listen_address"] = nodeInfo.ListenIP.String()
 	ipv6 := merged["rpc_interface_prefer_ipv6"]
 	if ipv6Bool, ok := ipv6.(bool); ok && ipv6Bool {
-		merged["rpc_address"] = nodeInfo.ListenIP
+		merged["rpc_address"] = "::"
 	} else {
 		merged["rpc_address"] = nodeInfo.RPCIP.String()
 	}
