@@ -220,6 +220,16 @@ func TestParseNodeInfo(t *testing.T) {
 	require.Equal("0.0.0.0", nodeInfo.RPCIP.String())
 	require.Equal("r1", nodeInfo.Rack)
 
+	t.Setenv("POD_IP", "fd00:10:244:4::7")
+	nodeInfo, err = parseNodeInfo()
+	require.NoError(err)
+	require.NotNil(nodeInfo)
+	require.Equal("fd00:10:244:4::7", nodeInfo.ListenIP.String())
+	require.Equal("fd00:10:244:4::7", nodeInfo.BroadcastIP.String())
+	require.Equal("::", nodeInfo.RPCIP.String())
+	require.Equal("r1", nodeInfo.Rack)
+
+	t.Setenv("POD_IP", "172.27.0.1")
 	t.Setenv("HOST_IP", "10.0.0.1")
 	nodeInfo, err = parseNodeInfo()
 	require.NoError(err)

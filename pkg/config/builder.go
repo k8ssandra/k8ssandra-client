@@ -148,9 +148,12 @@ func parseNodeInfo() (*NodeInfo, error) {
 		n.ListenIP = ip
 	}
 
-	// This is not currently overridable
-	if ip := net.ParseIP("0.0.0.0"); ip != nil {
-		n.RPCIP = ip
+	if ip := net.ParseIP(podIp); ip != nil {
+		if ip4 := ip.To4(); ip4 != nil {
+			n.RPCIP = net.ParseIP("0.0.0.0")
+		} else if len(ip) == net.IPv6len {
+			n.RPCIP = net.ParseIP("::")
+		}
 	}
 
 	return n, nil
