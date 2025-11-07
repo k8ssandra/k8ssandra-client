@@ -90,7 +90,7 @@ jobs:
             load: false
             file: cmd/kubectl-k8ssandra/Dockerfile
             push: ${{ github.event_name != 'pull_request' && !env.ACT }}
-            tags: :${{ steps.meta.outputs.tags }}
+            tags: ${{ steps.meta.outputs.tags }}
             platforms: linux/amd64,linux/arm64
             context: .
             cache-from: type=local,src=/tmp/.buildx-cache
