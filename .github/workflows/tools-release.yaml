@@ -51,10 +51,14 @@ jobs:
           with:
             username: ${{ secrets.DOCKER_HUB_USERNAME }}
             password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-        - name: Create release name
-          id: vars
-          run: |
-            echo "tag=${{ inputs.chartName }}-${{ inputs.chartVersion }}" >> $GITHUB_OUTPUT
+        - name: Docker meta
+          id: meta
+          uses: docker/metadata-action@v5
+          with:
+            images: |
+              k8ssandra/k8ssandra-client
+            tags: |
+              type=raw,value=${{ inputs.chartName }}-${{ inputs.chartVersion }}
         - name: Download the requested charts
           if: ${{ !inputs.gitRepo }}
           id: download_charts
@@ -86,7 +90,7 @@ jobs:
             load: false
             file: cmd/kubectl-k8ssandra/Dockerfile
             push: ${{ github.event_name != 'pull_request' && !env.ACT }}
-            tags: k8ssandra/k8ssandra-client:${{ steps.vars.outputs.tag }}
+            tags: :${{ steps.meta.outputs.tags }}
             platforms: linux/amd64,linux/arm64
             context: .
             cache-from: type=local,src=/tmp/.buildx-cache
