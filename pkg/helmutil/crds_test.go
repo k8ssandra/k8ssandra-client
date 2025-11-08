@@ -1,7 +1,6 @@
 package helmutil_test
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -36,7 +35,7 @@ func TestUpgradingCRDs(t *testing.T) {
 		u, err := helmutil.NewUpgrader(kubeClient, helmutil.K8ssandraRepoName, helmutil.StableK8ssandraRepoURL, chartName, []string{})
 		require.NoError(err)
 
-		crds, err := u.Upgrade(context.TODO(), "0.42.0")
+		crds, err := u.Upgrade(t.Context(), "0.42.0")
 		require.NoError(err)
 
 		testOptions := envtest.CRDInstallOptions{
@@ -57,7 +56,7 @@ func TestUpgradingCRDs(t *testing.T) {
 		require.NotEmpty(objs)
 		require.NotEmpty(cassDCCRD.GetName())
 		require.NoError(envtest.WaitForCRDs(env.RestConfig(), objs, testOptions))
-		require.NoError(kubeClient.Get(context.TODO(), client.ObjectKey{Name: cassDCCRD.GetName()}, cassDCCRD))
+		require.NoError(kubeClient.Get(t.Context(), client.ObjectKey{Name: cassDCCRD.GetName()}, cassDCCRD))
 		ver := cassDCCRD.GetResourceVersion()
 
 		descRunsAsCassandra := cassDCCRD.Spec.Versions[0].DeepCopy().Schema.OpenAPIV3Schema.Properties["spec"].Properties["dockerImageRunsAsCassandra"].Description
@@ -65,14 +64,14 @@ func TestUpgradingCRDs(t *testing.T) {
 
 		// Upgrading to 0.46.1
 		require.NoError(cleanCache("k8ssandra", chartName))
-		_, err = u.Upgrade(context.TODO(), "0.46.1")
+		_, err = u.Upgrade(t.Context(), "0.46.1")
 		require.NoError(err)
 
 		require.NoError(envtest.WaitForCRDs(env.RestConfig(), objs, testOptions))
-		require.NoError(kubeClient.Get(context.TODO(), client.ObjectKey{Name: cassDCCRD.GetName()}, cassDCCRD))
+		require.NoError(kubeClient.Get(t.Context(), client.ObjectKey{Name: cassDCCRD.GetName()}, cassDCCRD))
 
 		require.Eventually(func() bool {
-			require.NoError(kubeClient.Get(context.TODO(), client.ObjectKey{Name: cassDCCRD.GetName()}, cassDCCRD))
+			require.NoError(kubeClient.Get(t.Context(), client.ObjectKey{Name: cassDCCRD.GetName()}, cassDCCRD))
 			newver := cassDCCRD.GetResourceVersion()
 			return newver != ver
 		}, time.Minute*1, time.Millisecond*100)
@@ -121,7 +120,7 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	u, err := helmutil.NewUpgrader(kubeClient, helmutil.K8ssandraRepoName, helmutil.StableK8ssandraRepoURL, chartName, []string{})
 	require.NoError(err)
 
-	crds, err := u.Upgrade(context.TODO(), "0.1.0")
+	crds, err := u.Upgrade(t.Context(), "0.1.0")
 	require.NoError(err)
 
 	targetCrd := &apiextensions.CustomResourceDefinition{}
@@ -135,7 +134,7 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	require.NotEmpty(objs)
 	require.NotEmpty(targetCrd.GetName())
 	require.NoError(envtest.WaitForCRDs(env.RestConfig(), objs, testOptions))
-	require.NoError(kubeClient.Get(context.TODO(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
+	require.NoError(kubeClient.Get(t.Context(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
 
 	require.Equal([]string{"v1alpha1"}, targetCrd.Status.StoredVersions)
 
@@ -147,7 +146,7 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-both.yaml")
 	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
 
-	crds, err = u.Upgrade(context.TODO(), "0.2.0")
+	crds, err = u.Upgrade(t.Context(), "0.2.0")
 	require.NoError(err)
 	for _, crd := range crds {
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(crd.UnstructuredContent(), targetCrd)
@@ -156,7 +155,7 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	}
 	require.NotEmpty(objs)
 	require.NoError(envtest.WaitForCRDs(env.RestConfig(), objs, testOptions))
-	require.NoError(kubeClient.Get(context.TODO(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
+	require.NoError(kubeClient.Get(t.Context(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
 	require.Equal([]string{"v1alpha1", "v1beta1"}, targetCrd.Status.StoredVersions)
 
 	// Upgrade to 0.3.0
@@ -167,7 +166,7 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-v1beta1.yaml")
 	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
 
-	crds, err = u.Upgrade(context.TODO(), "0.3.0")
+	crds, err = u.Upgrade(t.Context(), "0.3.0")
 	require.NoError(err)
 	for _, crd := range crds {
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(crd.UnstructuredContent(), targetCrd)
@@ -176,13 +175,13 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	}
 	require.NotEmpty(objs)
 	require.NoError(envtest.WaitForCRDs(env.RestConfig(), objs, testOptions))
-	require.NoError(kubeClient.Get(context.TODO(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
+	require.NoError(kubeClient.Get(t.Context(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
 	require.Equal([]string{"v1beta1"}, targetCrd.Status.StoredVersions)
 
 	// Sanity check, install 0.2.0 and only update to 0.3.0 (there should be no storedVersion of v1alpha1)
-	require.NoError(kubeClient.Delete(context.TODO(), targetCrd))
+	require.NoError(kubeClient.Delete(t.Context(), targetCrd))
 	require.Eventually(func() bool {
-		err = kubeClient.Get(context.TODO(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd)
+		err = kubeClient.Get(t.Context(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd)
 		return err != nil && client.IgnoreNotFound(err) == nil
 	}, time.Second*5, time.Millisecond*100)
 
@@ -194,7 +193,7 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-both.yaml")
 	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
 
-	crds, err = u.Upgrade(context.TODO(), "0.2.0")
+	crds, err = u.Upgrade(t.Context(), "0.2.0")
 	require.NoError(err)
 	for _, crd := range crds {
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(crd.UnstructuredContent(), targetCrd)
@@ -203,7 +202,7 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	}
 	require.NotEmpty(objs)
 	require.NoError(envtest.WaitForCRDs(env.RestConfig(), objs, testOptions))
-	require.NoError(kubeClient.Get(context.TODO(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
+	require.NoError(kubeClient.Get(t.Context(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
 	require.Equal([]string{"v1beta1"}, targetCrd.Status.StoredVersions)
 
 	// Upgrade to 0.3.0
@@ -214,7 +213,7 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	crdSrc = filepath.Join("..", "..", "testfiles", "crd-upgrader", "multiversion-clientconfig-mockup-v1beta1.yaml")
 	require.NoError(copyFile(crdSrc, filepath.Join(crdDir, "clientconfig.yaml")))
 
-	crds, err = u.Upgrade(context.TODO(), "0.3.0")
+	crds, err = u.Upgrade(t.Context(), "0.3.0")
 	require.NoError(err)
 	for _, crd := range crds {
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(crd.UnstructuredContent(), targetCrd)
@@ -223,7 +222,7 @@ func TestUpgradingStoredVersions(t *testing.T) {
 	}
 	require.NotEmpty(objs)
 	require.NoError(envtest.WaitForCRDs(env.RestConfig(), objs, testOptions))
-	require.NoError(kubeClient.Get(context.TODO(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
+	require.NoError(kubeClient.Get(t.Context(), client.ObjectKey{Name: targetCrd.GetName()}, targetCrd))
 	require.Equal([]string{"v1beta1"}, targetCrd.Status.StoredVersions)
 }
 
