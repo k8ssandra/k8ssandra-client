@@ -26,6 +26,7 @@ var existingConfig = `
 		"initial_heap_size": "512m",
 		"max_heap_size": "512m",
 		"per_thread_stack_size": "384k",
+        "java_net_prefer_ipv4_stack": "false",
 		"additional-jvm-opts": [
 		"-Dcassandra.system_distributed_replication=test-dc:1",
 		"-Dcom.sun.management.jmxremote.authenticate=true"
@@ -42,7 +43,8 @@ var existingConfig = `
 		"authorizer": "CassandraAuthorizer",
 		"num_tokens": 256,
 		"role_manager": "CassandraRoleManager",
-		"start_rpc": false
+		"start_rpc": false,
+        "rpc_interface_prefer_ipv6": true
 	},
 	"cluster-info": {
 		"name": "test",
@@ -169,7 +171,8 @@ var booleanOverride = `
         "memtable_space_in_mb": 100,
         "num_tokens": 0,
         "role_manager": "com.datastax.bdp.cassandra.auth.DseRoleManager",
-        "rpc_keepalive": false
+        "rpc_keepalive": false,
+        "rpc_address": "1.1.1.1"
     },
     "cluster-info": {
         "name": "cluster1",
@@ -342,6 +345,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.Equal("CassandraRoleManager", cassandraYaml["role_manager"])
 	require.Equal("256", cassandraYaml["num_tokens"])
 	require.Equal(false, cassandraYaml["start_rpc"])
+	require.Equal("0.0.0.0", cassandraYaml["rpc_address"])
 }
 
 func TestCassandraBaseConfigFilePick(t *testing.T) {
@@ -490,6 +494,7 @@ func TestBooleanOverride(t *testing.T) {
 	require.Equal("com.datastax.bdp.cassandra.auth.DseAuthenticator", authenticator)
 	require.Equal(false, cassandraYaml["auto_snapshot"])
 	require.Equal(false, cassandraYaml["rpc_keepalive"])
+	require.Equal("1.1.1.1", cassandraYaml["rpc_address"])
 }
 
 func TestRackProperties(t *testing.T) {
