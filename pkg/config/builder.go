@@ -32,6 +32,8 @@ const (
 
 	oldCassandraConfigName    = "cassandra.yaml"
 	latestCassandraConfigName = "cassandra_latest.yaml"
+	ipv4Local                 = "0.0.0.0"
+	ipv6Local                 = "::"
 )
 
 type Builder struct {
@@ -150,9 +152,9 @@ func parseNodeInfo() (*NodeInfo, error) {
 
 	if ip := net.ParseIP(podIp); ip != nil {
 		if ip4 := ip.To4(); ip4 != nil {
-			n.RPCIP = net.ParseIP("0.0.0.0")
+			n.RPCIP = net.ParseIP(ipv4Local)
 		} else if len(ip) == net.IPv6len {
-			n.RPCIP = net.ParseIP("::")
+			n.RPCIP = net.ParseIP(ipv6Local)
 		}
 	}
 
@@ -583,11 +585,15 @@ func k8ssandraOverrides(merged map[string]interface{}, configInput *ConfigInput,
 	}
 
 	merged["listen_address"] = nodeInfo.ListenIP.String()
-	ipv6 := merged["rpc_interface_prefer_ipv6"]
-	if ipv6Bool, ok := ipv6.(bool); ok && ipv6Bool {
-		merged["rpc_address"] = "::"
-	} else {
-		merged["rpc_address"] = nodeInfo.RPCIP.String()
+	// Only set rpc_address if it's empty or localhost
+	if merged["rpc_address"] == "" || merged["rpc_address"] == "localhost" {
+		ipv6 := merged["rpc_interface_prefer_ipv6"]
+		if ipv6Bool, ok := ipv6.(bool); ok && ipv6Bool {
+			// force rpcaddress to be ipv6 local if rpc_interface_prefer_ipv6 is true
+			merged["rpc_address"] = ipv6Local
+		} else {
+			merged["rpc_address"] = nodeInfo.RPCIP.String()
+		}
 	}
 	delete(merged, "broadcast_address") // Sets it to the same as listen_address
 	merged["broadcast_rpc_address"] = nodeInfo.BroadcastIP
