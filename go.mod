@@ -1,6 +1,6 @@
 module github.com/k8ssandra/k8ssandra-client
 
-go 1.24.7
+go 1.24.10
 
 require (
 	github.com/Jeffail/gabs/v2 v2.7.0
@@ -11,21 +11,21 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/log v0.4.2
 	github.com/google/uuid v1.6.0
-	github.com/k8ssandra/cass-operator v1.26.1-0.20250906080335-6dd77704cf7a
-	github.com/k8ssandra/k8ssandra-operator v1.26.0
+	github.com/k8ssandra/cass-operator v1.28.0
+	github.com/k8ssandra/k8ssandra-operator v1.29.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.18.6
-	k8s.io/api v0.33.4
-	k8s.io/apiextensions-apiserver v0.33.4
-	k8s.io/apimachinery v0.33.4
-	k8s.io/cli-runtime v0.33.4
-	k8s.io/client-go v0.33.4
-	k8s.io/kubectl v0.33.4
-	k8s.io/kubernetes v1.33.4
+	k8s.io/api v0.33.6
+	k8s.io/apiextensions-apiserver v0.33.6
+	k8s.io/apimachinery v0.33.6
+	k8s.io/cli-runtime v0.33.6
+	k8s.io/client-go v0.33.6
+	k8s.io/kubectl v0.33.6
+	k8s.io/kubernetes v1.33.6
 	k8s.io/utils v0.0.0-20250820121507-0af2bda4dd1d
 	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/kind v0.30.0
@@ -54,7 +54,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.10.1 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
-	github.com/containerd/containerd v1.7.27 // indirect
+	github.com/containerd/containerd v1.7.29 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
@@ -150,7 +150,7 @@ require (
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/term v0.34.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	golang.org/x/time v0.9.0 // indirect
+	golang.org/x/time v0.12.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
@@ -158,11 +158,11 @@ require (
 	google.golang.org/protobuf v1.36.7 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/apiserver v0.33.4 // indirect
-	k8s.io/component-base v0.33.4 // indirect
-	k8s.io/component-helpers v0.33.4 // indirect
-	k8s.io/controller-manager v0.33.4 // indirect
-	k8s.io/dynamic-resource-allocation v0.33.4 // indirect
+	k8s.io/apiserver v0.33.6 // indirect
+	k8s.io/component-base v0.33.6 // indirect
+	k8s.io/component-helpers v0.33.6 // indirect
+	k8s.io/controller-manager v0.33.6 // indirect
+	k8s.io/dynamic-resource-allocation v0.33.6 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/kube-scheduler v0.29.14 // indirect
