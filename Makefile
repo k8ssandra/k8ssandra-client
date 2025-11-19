@@ -1,4 +1,4 @@
-VERSION ?= 0.8.1
+VERSION ?= 0.8.4
 
 COMMIT := $(shell git rev-parse --short HEAD)
 DATE := $(shell date +%Y%m%d)
