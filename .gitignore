@@ -23,4 +23,5 @@ bin/
 # Local History for Visual Studio Code
 .history/
 .vscode/
+.idea/
 build/
