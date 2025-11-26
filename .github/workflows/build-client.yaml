@@ -75,8 +75,8 @@ jobs:
         with:
           file: cmd/kubectl-k8ssandra/Dockerfile
           platforms: ${{ matrix.platform }}
-          tags: ${{ steps.meta.outputs.tags }}
           context: .
+          tags: k8ssandra/k8ssandra-client
           push: ${{ github.event_name != 'pull_request' }}
           outputs: type=image,push-by-digest=true,name-canonical=true
       - name: Export digest
