@@ -123,7 +123,6 @@ func (u *Upgrader) Upgrade(ctx context.Context, chartVersion string) ([]unstruct
 			storedVersions := existingDefinition.Status.StoredVersions
 
 			if !slices.Equal(storedVersions, updatedVersions) {
-
 				// Check if storedVersion has any versions that are not in updatedVersions
 				// If so, we need to remove them from the storedVersions
 				removed := false

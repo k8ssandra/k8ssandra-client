@@ -73,7 +73,7 @@ func (b *Builder) Build(ctx context.Context) error {
 	}
 
 	// Create rack information
-	if err := createRackProperties(configInput, nodeInfo, b.configInputDir, b.configOutputDir); err != nil {
+	if err := createRackProperties(configInput, nodeInfo, b.configOutputDir); err != nil {
 		return err
 	}
 
@@ -159,7 +159,7 @@ func parseNodeInfo() (*NodeInfo, error) {
 	return n, nil
 }
 
-func createRackProperties(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string) error {
+func createRackProperties(configInput *ConfigInput, nodeInfo *NodeInfo, targetDir string) error {
 	// This creates the cassandra-rackdc.properites with a template with only the values we currently support
 	targetFileT := filepath.Join(targetDir, "cassandra-rackdc.properties")
 	fT, err := os.OpenFile(targetFileT, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0770)
@@ -167,7 +167,11 @@ func createRackProperties(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDi
 		return err
 	}
 
-	defer fT.Close()
+	defer func() {
+		if err := fT.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	rackTemplate, err := template.New("cassandra-rackdc.properties").Parse("dc={{ .DatacenterName }}\nrack={{ .RackName }}\n")
 	if err != nil {
@@ -200,7 +204,11 @@ func createCassandraEnv(configInput *ConfigInput, sourceDir, targetDir string) e
 		return err
 	}
 
-	defer fT.Close()
+	defer func() {
+		if err := fT.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	if configInput.CassandraEnv.MallocArenaMax > 0 {
 		if _, err := fmt.Fprintf(fT, "export MALLOC_ARENA_MAX=%d\n", configInput.CassandraEnv.MallocArenaMax); err != nil {
@@ -372,14 +380,18 @@ curOptions:
 		return err
 	}
 
+	defer func() {
+		if err := fT.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
 	for _, v := range targetOptions {
 		_, err := fmt.Fprintf(fT, "%s\n", v)
 		if err != nil {
 			return err
 		}
 	}
-
-	defer fT.Close()
 
 	return nil
 }
@@ -487,7 +499,11 @@ func readJvmServerOptions(path string) ([]string, error) {
 		return nil, err
 	}
 
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -617,13 +633,21 @@ func copyFile(source, target string) error {
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("failed to open %s", source))
 	}
-	defer src.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	dst, err := os.Create(target)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("failed to open %s", target))
 	}
-	defer dst.Close()
+	defer func() {
+		if err := dst.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	_, err = io.Copy(dst, src)
 	return err

@@ -258,7 +258,7 @@ func TestBuild(t *testing.T) {
 	inputDir := filepath.Join(envtest.RootDir(), "testfiles")
 	tempDir, err := os.MkdirTemp("", "client-test")
 	require.NoError(err)
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 
 	b := NewBuilder(inputDir, tempDir)
 	require.NoError(b.Build(context.TODO()))
@@ -288,7 +288,7 @@ func TestCassandraYamlWriting(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "client-test")
 	require.NoError(err)
 
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 
 	// Create mandatory configs..
 	t.Setenv("CONFIG_FILE_DATA", existingConfig)
@@ -356,8 +356,8 @@ func TestCassandraBaseConfigFilePick(t *testing.T) {
 	require.NoError(err)
 
 	t.Cleanup(func() {
-		os.RemoveAll(inputDirOld)
-		os.RemoveAll(inputDirNew)
+		require.NoError(os.RemoveAll(inputDirOld))
+		require.NoError(os.RemoveAll(inputDirNew))
 	})
 
 	// Copy the correct files to the directories
@@ -372,8 +372,8 @@ func TestCassandraBaseConfigFilePick(t *testing.T) {
 	require.NoError(err)
 
 	t.Cleanup(func() {
-		os.RemoveAll(outputDirOld)
-		os.RemoveAll(outputDirNew)
+		require.NoError(os.RemoveAll(outputDirOld))
+		require.NoError(os.RemoveAll(outputDirNew))
 	})
 
 	// Create mandatory configs..
@@ -427,7 +427,7 @@ func TestCassandraYamlSubPath(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "client-test")
 	require.NoError(err)
 
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 
 	// Create mandatory configs..
 	t.Setenv("CONFIG_FILE_DATA", cass50Config)
@@ -462,7 +462,7 @@ func TestBooleanOverride(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "client-test")
 	require.NoError(err)
 
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 
 	// Create mandatory configs..
 	t.Setenv("CONFIG_FILE_DATA", booleanOverride)
@@ -494,9 +494,8 @@ func TestBooleanOverride(t *testing.T) {
 
 func TestRackProperties(t *testing.T) {
 	require := require.New(t)
-	propertiesDir := filepath.Join(envtest.RootDir(), "testfiles")
 	tempDir, err := os.MkdirTemp("", "client-test")
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 	require.NoError(err)
 
 	// Create mandatory configs..
@@ -510,7 +509,7 @@ func TestRackProperties(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createRackProperties(configInput, nodeInfo, propertiesDir, tempDir))
+	require.NoError(createRackProperties(configInput, nodeInfo, tempDir))
 
 	lines, err := readFileToLines(tempDir, "cassandra-rackdc.properties")
 	require.NoError(err)
@@ -524,7 +523,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	optionsDir := filepath.Join(envtest.RootDir(), "testfiles")
 	tempDir, err := os.MkdirTemp("", "client-test")
 
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 	require.NoError(err)
 
 	// Create mandatory configs..
@@ -571,7 +570,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	ci := &ConfigInput{}
 	tempDir2, err := os.MkdirTemp("", "client-test")
 	require.NoError(err)
-	defer os.RemoveAll(tempDir2)
+	defer require.NoError(os.RemoveAll(tempDir2))
 	require.NoError(createJVMOptions(ci, optionsDir, tempDir2))
 
 	inputFile11 = filepath.Join(tempDir2, "jvm11-server.options")
@@ -592,7 +591,7 @@ func TestServerOptionsOutput(t *testing.T) {
 
 	tempDir3, err := os.MkdirTemp("", "client-test")
 	require.NoError(err)
-	defer os.RemoveAll(tempDir3)
+	defer require.NoError(os.RemoveAll(tempDir3))
 	require.NoError(createJVMOptions(ci, optionsDir, tempDir3))
 
 	inputFile11 = filepath.Join(tempDir3, "jvm11-server.options")
@@ -627,7 +626,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 	// Test G1GC for JVM17
 	tempDirG1, err := os.MkdirTemp("", "jvm17-g1gc-test")
 	require.NoError(err)
-	defer os.RemoveAll(tempDirG1)
+	defer require.NoError(os.RemoveAll(tempDirG1))
 
 	ciG1 := &ConfigInput{
 		ServerOptions17: map[string]interface{}{
@@ -654,7 +653,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 	// Test ZGC for JVM17
 	tempDirZ, err := os.MkdirTemp("", "jvm17-zgc-test")
 	require.NoError(err)
-	defer os.RemoveAll(tempDirZ)
+	defer require.NoError(os.RemoveAll(tempDirZ))
 
 	ciZ := &ConfigInput{
 		ServerOptions17: map[string]interface{}{
@@ -681,7 +680,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 	// Test Shenandoah for JVM17
 	tempDirS, err := os.MkdirTemp("", "jvm17-shenandoah-test")
 	require.NoError(err)
-	defer os.RemoveAll(tempDirS)
+	defer require.NoError(os.RemoveAll(tempDirS))
 
 	ciS := &ConfigInput{
 		ServerOptions17: map[string]interface{}{
@@ -710,7 +709,7 @@ func TestCassandraEnv(t *testing.T) {
 	require := require.New(t)
 	envDir := filepath.Join(envtest.RootDir(), "testfiles")
 	tempDir, err := os.MkdirTemp("", "client-test")
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 
 	require.NoError(err)
 
@@ -738,7 +737,7 @@ func TestReadOptionsWithNumeric(t *testing.T) {
 	optionsDir := filepath.Join(envtest.RootDir(), "testfiles")
 	tempDir, err := os.MkdirTemp("", "client-test")
 
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 	require.NoError(err)
 
 	t.Setenv("CONFIG_FILE_DATA", numericConfig)
@@ -760,7 +759,7 @@ func TestCass50GCOverrides(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "client-test")
 	require.NoError(err)
 
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 
 	// Create mandatory configs..
 	t.Setenv("CONFIG_FILE_DATA", cass50ConfigJDK17OverrideGC)
@@ -790,7 +789,7 @@ func TestCass50GCOverridesAdditionalOpts(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "client-test")
 	require.NoError(err)
 
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 
 	// Create mandatory configs..
 	t.Setenv("CONFIG_FILE_DATA", cass50ConfigJDK17OverrideGCFromAdditionalOpts)
@@ -824,7 +823,11 @@ func readFileToLines(dir, filename string) ([]string, error) {
 		return nil, err
 	}
 
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -843,7 +846,7 @@ func TestCopyFiles(t *testing.T) {
 	inputDir := filepath.Join(envtest.RootDir(), "testfiles")
 	tempDir, err := os.MkdirTemp("", "client-test")
 	require.NoError(err)
-	defer os.RemoveAll(tempDir)
+	defer require.NoError(os.RemoveAll(tempDir))
 
 	require.NoError(copyFiles(inputDir, tempDir))
 

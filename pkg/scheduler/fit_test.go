@@ -178,6 +178,7 @@ func makeResources(milliCPU, memory, pods int64) corev1.ResourceList {
 	}
 }
 
+//nolint:unparam
 func makeNode(name string) *corev1.Node {
 	n := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{

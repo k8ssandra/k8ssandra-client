@@ -10,7 +10,7 @@ import (
 func TestFindCRDDirs(t *testing.T) {
 	require := require.New(t)
 	chartDir, err := os.MkdirTemp("", "k8ssandra")
-	defer os.RemoveAll(chartDir)
+	defer require.NoError(os.RemoveAll(chartDir))
 	require.NoError(err)
 
 	require.NoError(os.MkdirAll(chartDir+"/downstream-operator/crds", 0755))

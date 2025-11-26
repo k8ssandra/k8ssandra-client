@@ -74,17 +74,21 @@ func MergeValuesFile(cfg *action.Configuration, settings *cli.EnvSettings, chart
 
 	// TODO Following does not belong here.. move to some pkg
 
-	file, err := os.Open(targetFilename)
+	f, err := os.Open(targetFilename)
 	if err != nil {
 		return nil, err
 	}
 
-	yamlInput, err := io.ReadAll(file)
+	yamlInput, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
 
-	defer file.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	cacheDir, err := util.GetCacheDir("helm", "values")
 	if err != nil {
@@ -148,7 +152,7 @@ func nodesEqual(l, r *yaml.Node) bool {
 
 func recursiveMerge(from, into *yaml.Node) error {
 	if from.Kind != into.Kind {
-		return errors.New("Unable to merge input values")
+		return errors.New("unable to merge input values")
 	}
 	switch from.Kind {
 	case yaml.MappingNode:
