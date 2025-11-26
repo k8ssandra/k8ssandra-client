@@ -35,7 +35,6 @@ func SetupRegisterClusterCmd(cmd *cobra.Command, streams genericclioptions.IOStr
 
 	if err := registerClusterCmd.MarkFlagRequired("source-context"); err != nil {
 		panic(err)
-
 	}
 	if err := registerClusterCmd.MarkFlagRequired("dest-context"); err != nil {
 		panic(err)

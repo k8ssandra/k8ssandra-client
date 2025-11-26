@@ -9,7 +9,6 @@ import (
 
 // GetAllKubernetesNodeIPAddresses returns a mapping of IPAddress -> node_name
 func GetAllKubernetesNodeIPAddresses(ctx context.Context, cli client.Client) (map[string]string, error) {
-
 	nodes := &corev1.NodeList{}
 	if err := cli.List(ctx, nodes); err != nil {
 		return nil, err

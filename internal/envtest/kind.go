@@ -49,7 +49,7 @@ func (k *KindManager) CreateKindCluster() error {
 		cluster.CreateWithWaitForReady(time.Duration(0)),
 		cluster.CreateWithKubeconfigPath(k.KubeconfigLocation.Name()),
 		cluster.CreateWithDisplayUsage(false),
-		cluster.CreateWithRawConfig([]byte(kindConfig)),
+		cluster.CreateWithRawConfig(kindConfig),
 	)
 	if err != nil {
 		return err

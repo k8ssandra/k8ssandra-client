@@ -37,13 +37,13 @@ jobs:
         GH_TOKEN: ${{ secrets[format('{0}', inputs.tokenSecret)] }}
       steps:
         - name: Check out code into the Go module directory
-          uses: actions/checkout@v4
+          uses: actions/checkout@v6
         - name: Set up Docker Buildx
           uses: docker/setup-buildx-action@v3
         - uses: azure/setup-helm@v4
           if: ${{ env.ACT }}
           with:
-             version: '3.17.3'
+             version: '3.19.2'
           id: install
         - name: Login to DockerHub
           if: ${{ !env.ACT }}
@@ -91,7 +91,71 @@ jobs:
             file: cmd/kubectl-k8ssandra/Dockerfile
             push: ${{ github.event_name != 'pull_request' && !env.ACT }}
             tags: ${{ steps.meta.outputs.tags }}
-            platforms: linux/amd64,linux/arm64
+            platforms: linux/amd64
+            context: .
+            cache-from: type=local,src=/tmp/.buildx-cache
+            cache-to: type=local,dest=/tmp/.buildx-cache
+    create_the_image_arm64:
+      runs-on: ubuntu-24.04-arm
+      env:
+        GH_TOKEN: ${{ secrets[format('{0}', inputs.tokenSecret)] }}
+      steps:
+        - name: Check out code into the Go module directory
+          uses: actions/checkout@v6
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v3
+        - uses: azure/setup-helm@v4
+          if: ${{ env.ACT }}
+          with:
+             version: '3.19.2'
+          id: install
+        - name: Login to DockerHub
+          if: ${{ !env.ACT }}
+          uses: docker/login-action@v3
+          with:
+            username: ${{ secrets.DOCKER_HUB_USERNAME }}
+            password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+        - name: Docker meta
+          id: meta
+          uses: docker/metadata-action@v5
+          with:
+            images: |
+              k8ssandra/k8ssandra-client
+            tags: |
+              type=raw,value=${{ inputs.chartName }}-${{ inputs.chartVersion }}
+        - name: Download the requested charts
+          if: ${{ !inputs.gitRepo }}
+          id: download_charts
+          run: |
+            if [ -z "${{ inputs.tokenSecret }}" ]; then
+              helm repo add ${{ inputs.repoName }} ${{ inputs.repoURL }}
+            else
+              helm repo add ${{ inputs.repoName }} ${{ inputs.repoURL }}  --username "${{ env.GH_TOKEN }}" --password "${{ env.GH_TOKEN }}"
+            fi
+            helm repo update
+            helm pull ${{ inputs.repoName }}/${{ inputs.chartName }} --version ${{ inputs.chartVersion }}
+            mkdir -p build/${{ inputs.repoName }}
+            tar -xvf ${{ inputs.chartName }}-${{ inputs.chartVersion }}.tgz -C build/${{ inputs.repoName }}
+        - name: Download the requested chart from another repository
+          if: ${{ inputs.gitRepo }}
+          id: download_charts_github
+          run: |
+            gh repo clone ${{ inputs.gitRepo }} ${{ inputs.repoName }}
+            cd ${{ inputs.repoName }}
+            git checkout ${{ inputs.chartVersion }}
+            cd ..
+            mkdir -p build/${{ inputs.repoName }}
+            cp -R ${{ inputs.repoName }}/${{ inputs.chartDir }}/* build/${{ inputs.repoName }}
+            helm dependency update build/${{ inputs.repoName }}
+        - name: Build and push
+          id: docker_build
+          uses: docker/build-push-action@v6
+          with:
+            load: false
+            file: cmd/kubectl-k8ssandra/Dockerfile
+            push: ${{ github.event_name != 'pull_request' && !env.ACT }}
+            tags: ${{ steps.meta.outputs.tags }}
+            platforms: linux/arm64
             context: .
             cache-from: type=local,src=/tmp/.buildx-cache
             cache-to: type=local,dest=/tmp/.buildx-cache

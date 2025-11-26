@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/log"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
@@ -126,7 +125,7 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 			"kubeconfig": secretData,
 		},
 	}
-	if err := destClient.Create(e.Context, &destSecret); err != nil && !errors.IsAlreadyExists(err) {
+	if err := destClient.Create(e.Context, &destSecret); err != nil && !apierrors.IsAlreadyExists(err) {
 		return fmt.Errorf("error creating secret. err: %s sa %s", err, e.ServiceAccount)
 	}
 
@@ -147,7 +146,7 @@ func (e *RegistrationExecutor) RegisterCluster() error {
 			ContextName: e.DestinationName,
 		},
 	}
-	if err := destClient.Create(e.Context, &destClientConfig); err != nil && !errors.IsAlreadyExists(err) {
+	if err := destClient.Create(e.Context, &destClientConfig); err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
 

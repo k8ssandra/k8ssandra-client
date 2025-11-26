@@ -46,7 +46,11 @@ func readTargetSecretMount(path string) (map[string]string, error) {
 			return err
 		}
 
-		defer f.Close()
+		defer func() {
+			if err := f.Close(); err != nil {
+				panic(err)
+			}
+		}()
 
 		fileContents, err := io.ReadAll(f)
 		if err != nil {
@@ -73,7 +77,11 @@ func readTargetFile(path string) (map[string]string, error) {
 		return nil, err
 	}
 
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	users := make(map[string]string)
 

@@ -82,6 +82,7 @@ func TestUpgradingCRDs(t *testing.T) {
 	}
 }
 
+//nolint:unparam
 func cleanCache(repoName, chartName string) error {
 	chartDir, err := helmutil.GetChartTargetDir(repoName, chartName)
 	if err != nil {
@@ -232,13 +233,21 @@ func copyFile(source, target string) error {
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("failed to open %s", source))
 	}
-	defer src.Close()
+	defer func() {
+		if err := src.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	dst, err := os.Create(target)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("failed to open %s", target))
 	}
-	defer dst.Close()
+	defer func() {
+		if err := dst.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	_, err = io.Copy(dst, src)
 	return err

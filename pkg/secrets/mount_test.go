@@ -18,8 +18,8 @@ func TestVaultMounted(t *testing.T) {
 	require.NoError(err)
 
 	defer func() {
-		tmpFile.Close()
-		os.RemoveAll(tmpDir)
+		require.NoError(tmpFile.Close())
+		require.NoError(os.RemoveAll(tmpDir))
 	}()
 
 	_, err = tmpFile.WriteString("newuser=password====")
@@ -48,7 +48,7 @@ func TestSecretMounted(t *testing.T) {
 	require.NoError(err)
 
 	defer func() {
-		os.RemoveAll(tmpDir)
+		require.NoError(os.RemoveAll(tmpDir))
 	}()
 
 	users, err := readTargetSecretMount(tmpDir)
