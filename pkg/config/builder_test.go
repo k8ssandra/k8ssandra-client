@@ -25,6 +25,7 @@ var existingConfig = `
 		"initial_heap_size": "512m",
 		"max_heap_size": "512m",
 		"per_thread_stack_size": "384k",
+        "java_net_prefer_ipv4_stack": "false",
 		"additional-jvm-opts": [
 		"-Dcassandra.system_distributed_replication=test-dc:1",
 		"-Dcom.sun.management.jmxremote.authenticate=true"
@@ -41,7 +42,8 @@ var existingConfig = `
 		"authorizer": "CassandraAuthorizer",
 		"num_tokens": 256,
 		"role_manager": "CassandraRoleManager",
-		"start_rpc": false
+		"start_rpc": false,
+        "rpc_interface_prefer_ipv6": true
 	},
 	"cluster-info": {
 		"name": "test",
@@ -168,7 +170,8 @@ var booleanOverride = `
         "memtable_space_in_mb": 100,
         "num_tokens": 0,
         "role_manager": "com.datastax.bdp.cassandra.auth.DseRoleManager",
-        "rpc_keepalive": false
+        "rpc_keepalive": false,
+        "rpc_address": "1.1.1.1"
     },
     "cluster-info": {
         "name": "cluster1",
@@ -216,7 +219,7 @@ func TestParseNodeInfo(t *testing.T) {
 	require.NotNil(nodeInfo)
 	require.Equal("172.27.0.1", nodeInfo.ListenIP.String())
 	require.Equal("172.27.0.1", nodeInfo.BroadcastIP.String())
-	require.Equal("0.0.0.0", nodeInfo.RPCIP.String())
+	require.Equal(ipv4Local, nodeInfo.RPCIP.String())
 	require.Equal("r1", nodeInfo.Rack)
 
 	t.Setenv("POD_IP", "fd00:10:244:4::7")
@@ -225,7 +228,7 @@ func TestParseNodeInfo(t *testing.T) {
 	require.NotNil(nodeInfo)
 	require.Equal("fd00:10:244:4::7", nodeInfo.ListenIP.String())
 	require.Equal("fd00:10:244:4::7", nodeInfo.BroadcastIP.String())
-	require.Equal("::", nodeInfo.RPCIP.String())
+	require.Equal(ipv6Local, nodeInfo.RPCIP.String())
 	require.Equal("r1", nodeInfo.Rack)
 
 	t.Setenv("POD_IP", "172.27.0.1")
@@ -336,6 +339,8 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.Equal("CassandraRoleManager", cassandraYaml["role_manager"])
 	require.Equal("256", cassandraYaml["num_tokens"])
 	require.Equal(false, cassandraYaml["start_rpc"])
+	// existingConfig has rpc_interface_prefer_ipv6: true, so rpc_address should be ipv6Local
+	require.Equal(ipv6Local, cassandraYaml["rpc_address"])
 }
 
 func TestCassandraBaseConfigFilePick(t *testing.T) {
@@ -463,6 +468,7 @@ func TestBooleanOverride(t *testing.T) {
 	require.Equal("com.datastax.bdp.cassandra.auth.DseAuthenticator", authenticator)
 	require.Equal(false, cassandraYaml["auto_snapshot"])
 	require.Equal(false, cassandraYaml["rpc_keepalive"])
+	require.Equal("1.1.1.1", cassandraYaml["rpc_address"])
 }
 
 func TestRackProperties(t *testing.T) {
