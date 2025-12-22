@@ -562,7 +562,7 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 
 	for k, v := range configInput.CassYaml {
 		if v == nil {
-			delete(merged, k)
+			merged[k] = nil
 		}
 	}
 

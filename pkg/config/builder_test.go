@@ -499,7 +499,8 @@ func TestNilOverride(t *testing.T) {
 	cassandraYaml := make(map[string]interface{})
 	require.NoError(yaml.Unmarshal(yamlFile, cassandraYaml))
 
-	require.NotContains(cassandraYaml, "allocate_tokens_for_local_replication_factor")
+	require.Contains(cassandraYaml, "allocate_tokens_for_local_replication_factor")
+	require.Nil(cassandraYaml["allocate_tokens_for_local_replication_factor"])
 }
 
 func TestRackProperties(t *testing.T) {
