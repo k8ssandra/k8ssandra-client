@@ -189,6 +189,13 @@ var booleanOverride = `
     }
 }`
 
+var removeAllocateTokens = `
+{
+    "cassandra-yaml": {
+		"allocate_tokens_for_local_replication_factor": null
+	}
+}`
+
 func TestBuilderDefaults(t *testing.T) {
 	require := require.New(t)
 	builder := NewBuilder("", "")
@@ -469,6 +476,37 @@ func TestBooleanOverride(t *testing.T) {
 	require.Equal(false, cassandraYaml["auto_snapshot"])
 	require.Equal(false, cassandraYaml["rpc_keepalive"])
 	require.Equal("1.1.1.1", cassandraYaml["rpc_address"])
+}
+
+func TestNilOverride(t *testing.T) {
+	require := require.New(t)
+	cassYamlDir := filepath.Join(envtest.RootDir(), "testfiles")
+	tempDir := t.TempDir()
+
+	// Create mandatory configs..
+	t.Setenv("CONFIG_FILE_DATA", removeAllocateTokens)
+	configInput, err := parseConfigInput()
+	require.NoError(err)
+	require.NotNil(configInput)
+	t.Setenv("POD_IP", "172.27.0.1")
+	t.Setenv("RACK_NAME", "r1")
+	nodeInfo, err := parseNodeInfo()
+	require.NoError(err)
+	require.NotNil(nodeInfo)
+
+	require.NoError(createCassandraYaml(configInput, nodeInfo, cassYamlDir, tempDir))
+
+	yamlPath := filepath.Join(tempDir, "cassandra.yaml")
+
+	yamlFile, err := os.ReadFile(yamlPath)
+	require.NoError(err)
+
+	// Unmarshal, Marshal to remove all comments (and some fields if necessary)
+	cassandraYaml := make(map[string]interface{})
+	require.NoError(yaml.Unmarshal(yamlFile, cassandraYaml))
+
+	require.Contains(cassandraYaml, "allocate_tokens_for_local_replication_factor")
+	require.Nil(cassandraYaml["allocate_tokens_for_local_replication_factor"])
 }
 
 func TestRackProperties(t *testing.T) {

@@ -562,6 +562,12 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 		}
 	}
 
+	for k, v := range configInput.CassYaml {
+		if v == nil {
+			merged[k] = nil
+		}
+	}
+
 	// Take the NodeInfo information and add those modifications to the merge output (a priority)
 	// Take the mandatory changes we require and merge them (a priority again)
 	merged = k8ssandraOverrides(merged, configInput, nodeInfo)
