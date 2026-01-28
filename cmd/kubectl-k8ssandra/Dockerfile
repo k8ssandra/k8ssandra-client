@@ -41,8 +41,9 @@ RUN microdnf install --nodocs -y kubectl ca-certificates
 
 WORKDIR /workspace
 
-# Install yq
-RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION:-4.47.1}/yq_${TARGETOS:-linux}_${TARGETARCH:-amd64}" -o yq
+# Install yq - automatically fetch the latest version
+RUN YQ_LATEST=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep -o '"tag_name": "v[^"]*"' | cut -d'"' -f4 | sed 's/v//') && \
+    curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_LATEST}/yq_${TARGETOS:-linux}_${TARGETARCH:-amd64}" -o yq
 
 # Build the UBI image
 FROM redhat/ubi9-micro:latest
