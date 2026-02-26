@@ -25,6 +25,8 @@ FROM redhat/ubi9-minimal:latest AS ubi-builder
 
 ARG YQ_VERSION
 ARG KUBE_VERSION
+ARG TARGETOS
+ARG TARGETARCH
 
 # Install kubectl
 RUN cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
