@@ -19,11 +19,12 @@ require (
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.18.6
-	k8s.io/api v0.35.3
+	k8s.io/api v0.34.6
 	k8s.io/apiextensions-apiserver v0.34.6
-	k8s.io/apimachinery v0.35.3
+	k8s.io/apimachinery v0.34.6
 	k8s.io/cli-runtime v0.34.6
-	k8s.io/client-go v0.35.3
+	k8s.io/client-go v0.34.6
+	k8s.io/kube-scheduler v0.34.6
 	k8s.io/kubectl v0.34.6
 	k8s.io/kubernetes v1.34.6
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
@@ -160,14 +161,13 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/apiserver v0.35.3 // indirect
-	k8s.io/component-base v0.35.3 // indirect
-	k8s.io/component-helpers v0.35.3 // indirect
-	k8s.io/controller-manager v0.33.8 // indirect
-	k8s.io/dynamic-resource-allocation v0.35.3 // indirect
+	k8s.io/apiserver v0.34.6 // indirect
+	k8s.io/component-base v0.34.6 // indirect
+	k8s.io/component-helpers v0.34.6 // indirect
+	k8s.io/controller-manager v0.34.6 // indirect
+	k8s.io/dynamic-resource-allocation v0.34.6 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
-	k8s.io/kube-scheduler v0.35.3 // indirect
 	oras.land/oras-go/v2 v2.6.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kustomize/api v0.20.1 // indirect

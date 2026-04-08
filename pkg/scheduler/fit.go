@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	schedframework "k8s.io/kube-scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	plfeature "k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature"
@@ -46,6 +47,26 @@ func fetchNodes(ctx context.Context, cli client.Client) ([]corev1.Node, error) {
 	return nodes.Items, nil
 }
 
+func convertNodeInfos(nodeInfos []*framework.NodeInfo) []schedframework.NodeInfo {
+	nodes := make([]schedframework.NodeInfo, 0, len(nodeInfos))
+	for _, nodeInfo := range nodeInfos {
+		nodes = append(nodes, nodeInfo)
+	}
+	return nodes
+}
+
+func statusCode(status *schedframework.Status) schedframework.Code {
+	if status == nil {
+		// This is because the iota value is Success and docs say:
+		/*
+			// NOTE: A nil status is also considered as "Success".
+			Success Code = iota
+		*/
+		return schedframework.Success
+	}
+	return status.Code()
+}
+
 // TryScheduling checks if the proposed pods will be schedulable in the cluster. The ProposedPods must have their
 // labels, tolerations, affinities and resource limits set
 func TryScheduling(ctx context.Context, cli client.Client, proposedPods []*corev1.Pod) error {
@@ -58,8 +79,6 @@ func TryScheduling(ctx context.Context, cli client.Client, proposedPods []*corev
 	if err != nil {
 		return err
 	}
-
-	state := framework.NewCycleState()
 
 	schedulablePlugin, err := nodeunschedulable.New(ctx, nil, nil, plfeature.Features{})
 	if err != nil {
@@ -101,23 +120,53 @@ func TryScheduling(ctx context.Context, cli client.Client, proposedPods []*corev
 	succeededPods := 0
 NextPod:
 	for _, pod := range proposedPods {
+		state := framework.NewCycleState()
+		podInfo, err := framework.NewPodInfo(pod)
+		if err != nil {
+			return err
+		}
+
+		candidateNodes := convertNodeInfos(usableNodes)
+		skippedPlugins := map[string]struct{}{}
+		var preFilterResult *framework.PreFilterResult
+
+		for _, plugin := range plugins {
+			prefilterPlugin, ok := plugin.(framework.PreFilterPlugin)
+			if !ok {
+				continue
+			}
+
+			pluginResult, preFilterStatus := prefilterPlugin.PreFilter(ctx, state, podInfo.Pod, candidateNodes)
+			if preFilterStatus == nil {
+				// All PreFilters must return Success for the pod to be considered schedulable.
+				preFilterStatus = schedframework.NewStatus(schedframework.Success, "")
+			}
+			code := statusCode(preFilterStatus)
+			switch code {
+			case schedframework.Success:
+				preFilterResult = preFilterResult.Merge(pluginResult)
+			case schedframework.Skip:
+				skippedPlugins[plugin.Name()] = struct{}{}
+			}
+
+			if code != schedframework.Success && code != schedframework.Skip {
+				return fmt.Errorf("unable to schedule all the pods, requested: %d, schedulable: %d", len(proposedPods), succeededPods)
+			}
+		}
+
 	NextNode:
 		for _, node := range usableNodes {
-			podInfo, err := framework.NewPodInfo(pod)
-			if err != nil {
-				return err
+			if preFilterResult != nil && !preFilterResult.AllNodes() && !preFilterResult.NodeNames.Has(node.Node().Name) {
+				continue
 			}
 
 			for _, plugin := range plugins {
-				var preFilterStatus, filterStatus *framework.Status
-				if prefilterPlugin, ok := plugin.(framework.PreFilterPlugin); ok {
-					_, preFilterStatus = prefilterPlugin.PreFilter(ctx, state, podInfo.Pod)
-					if preFilterStatus.Code() != framework.Success && preFilterStatus.Code() != framework.Skip {
-						continue NextNode
-					}
+				if _, ok := skippedPlugins[plugin.Name()]; ok {
+					continue
 				}
-				filterStatus = plugin.Filter(ctx, state, podInfo.Pod, node)
-				if filterStatus.Code() != framework.Success {
+
+				filterStatus := plugin.Filter(ctx, state, podInfo.Pod, node)
+				if statusCode(filterStatus) != schedframework.Success {
 					continue NextNode
 				}
 			}
