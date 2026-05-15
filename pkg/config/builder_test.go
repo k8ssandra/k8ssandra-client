@@ -317,10 +317,10 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.NoError(err)
 
 	// Unmarshal, Marshal to remove all comments (and some fields if necessary)
-	cassandraYaml := make(map[string]interface{})
+	cassandraYaml := make(map[string]any)
 	require.NoError(yaml.Unmarshal(yamlFile, cassandraYaml))
 
-	cassandraOrigYaml := make(map[string]interface{})
+	cassandraOrigYaml := make(map[string]any)
 	require.NoError(yaml.Unmarshal(yamlOrigFile, cassandraOrigYaml))
 
 	// Verify all the original keys are there (nothing was removed)
@@ -332,8 +332,8 @@ func TestCassandraYamlWriting(t *testing.T) {
 	clusterName := configInput.ClusterInfo.Name
 	require.Equal(clusterName, cassandraYaml["cluster_name"])
 
-	seedProviders := cassandraYaml["seed_provider"].([]interface{})
-	seedProvider := seedProviders[0].(map[string]interface{})
+	seedProviders := cassandraYaml["seed_provider"].([]any)
+	seedProvider := seedProviders[0].(map[string]any)
 	require.Equal("org.apache.cassandra.locator.K8SeedProvider", seedProvider["class_name"])
 	require.Equal("GossipingPropertyFileSnitch", cassandraYaml["endpoint_snitch"])
 
@@ -402,10 +402,10 @@ func TestCassandraBaseConfigFilePick(t *testing.T) {
 	yamlNewFile, err := os.ReadFile(yamlNewOutput)
 	require.NoError(err)
 
-	cassandraYamlOld := make(map[string]interface{})
+	cassandraYamlOld := make(map[string]any)
 	require.NoError(yaml.Unmarshal(yamlOldFile, cassandraYamlOld))
 
-	cassandraYamlNew := make(map[string]interface{})
+	cassandraYamlNew := make(map[string]any)
 	require.NoError(yaml.Unmarshal(yamlNewFile, cassandraYamlNew))
 
 	require.Equal("heap_buffers", cassandraYamlOld["memtable_allocation_type"])
@@ -436,11 +436,11 @@ func TestCassandraYamlSubPath(t *testing.T) {
 	require.NoError(err)
 
 	// Unmarshal, Marshal to remove all comments (and some fields if necessary)
-	cassandraYaml := make(map[string]interface{})
+	cassandraYaml := make(map[string]any)
 	require.NoError(yaml.Unmarshal(yamlFile, cassandraYaml))
 
 	authenticator := cassandraYaml["authenticator"]
-	authenticatorStruct := authenticator.(map[string]interface{})
+	authenticatorStruct := authenticator.(map[string]any)
 	require.Equal("org.apache.cassandra.auth.PasswordAuthenticator", authenticatorStruct["class_name"])
 }
 
@@ -468,7 +468,7 @@ func TestBooleanOverride(t *testing.T) {
 	require.NoError(err)
 
 	// Unmarshal, Marshal to remove all comments (and some fields if necessary)
-	cassandraYaml := make(map[string]interface{})
+	cassandraYaml := make(map[string]any)
 	require.NoError(yaml.Unmarshal(yamlFile, cassandraYaml))
 
 	authenticator := cassandraYaml["authenticator"]
@@ -502,7 +502,7 @@ func TestNilOverride(t *testing.T) {
 	require.NoError(err)
 
 	// Unmarshal, Marshal to remove all comments (and some fields if necessary)
-	cassandraYaml := make(map[string]interface{})
+	cassandraYaml := make(map[string]any)
 	require.NoError(yaml.Unmarshal(yamlFile, cassandraYaml))
 
 	require.Contains(cassandraYaml, "allocate_tokens_for_local_replication_factor")
@@ -594,7 +594,7 @@ func TestServerOptionsOutput(t *testing.T) {
 
 	// Test CMS option also
 	ci = &ConfigInput{
-		ServerOptions11: map[string]interface{}{
+		ServerOptions11: map[string]any{
 			"garbage_collector": "CMS",
 		},
 	}
@@ -635,7 +635,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 	tempDirG1 := t.TempDir()
 
 	ciG1 := &ConfigInput{
-		ServerOptions17: map[string]interface{}{
+		ServerOptions17: map[string]any{
 			"garbage_collector": "G1GC",
 		},
 	}
@@ -660,7 +660,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 	tempDirZ := t.TempDir()
 
 	ciZ := &ConfigInput{
-		ServerOptions17: map[string]interface{}{
+		ServerOptions17: map[string]any{
 			"garbage_collector": "ZGC",
 		},
 	}
@@ -685,7 +685,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 	tempDirS := t.TempDir()
 
 	ciS := &ConfigInput{
-		ServerOptions17: map[string]interface{}{
+		ServerOptions17: map[string]any{
 			"garbage_collector": "Shenandoah",
 		},
 	}

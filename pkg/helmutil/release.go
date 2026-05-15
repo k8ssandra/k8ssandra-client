@@ -27,7 +27,7 @@ func ChartVersion(cfg *action.Configuration, releaseName string) (*chart.Chart, 
 }
 
 // SetValues returns the deployed Helm releases modified values
-func SetValues(cfg *action.Configuration, releaseName string) (map[string]interface{}, error) {
+func SetValues(cfg *action.Configuration, releaseName string) (map[string]any, error) {
 	client := action.NewGetValues(cfg)
 	return client.Run(releaseName)
 }
@@ -56,7 +56,7 @@ func UpgradeValues(cfg *action.Configuration, chartDir, chartName, releaseName s
 		return nil, err
 	}
 
-	var values map[string]interface{}
+	var values map[string]any
 	err = yaml.Unmarshal(data, &values)
 	if err != nil {
 		return nil, err

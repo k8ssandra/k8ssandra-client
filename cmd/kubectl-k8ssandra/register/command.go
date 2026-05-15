@@ -47,7 +47,7 @@ func entrypoint(cmd *cobra.Command, args []string) error {
 	executor := NewRegistrationExecutorFromRegisterClusterCmd(*cmd)
 
 	// TODO What is this magic number 30?
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		if err := executor.RegisterCluster(); err != nil {
 			if errors.Is(err, NonRecoverableError{}) {
 				log.Error(fmt.Sprintf("Registration failed: %s", err.Error()))

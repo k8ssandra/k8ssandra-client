@@ -137,7 +137,7 @@ func ListInstallations(cfg *action.Configuration) ([]*release.Release, error) {
 	return listAction.Run()
 }
 
-func Install(cfg *action.Configuration, releaseName, path, namespace string, values map[string]interface{}, devel bool, skipCRDs bool, timeout time.Duration) (*release.Release, error) {
+func Install(cfg *action.Configuration, releaseName, path, namespace string, values map[string]any, devel bool, skipCRDs bool, timeout time.Duration) (*release.Release, error) {
 	installAction := action.NewInstall(cfg)
 	installAction.ReleaseName = releaseName
 	installAction.Namespace = namespace

@@ -268,7 +268,7 @@ func optionsFilenameToMap(filename string) map[string]metadata.Metadata {
 	}
 }
 
-func createServerJVMOptions(options map[string]interface{}, filename, sourceDir, targetDir string) error {
+func createServerJVMOptions(options map[string]any, filename, sourceDir, targetDir string) error {
 	// Read the current jvm-server-options as []string, do linear search to replace the values with the inputs we get
 	optionsPath := filepath.Join(sourceDir, filename)
 	currentOptions, err := readJvmServerOptions(optionsPath)
@@ -282,7 +282,7 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 		// Parse the jvm-server-options
 		if addOpts, found := options["additional-jvm-opts"]; found {
 			// Detect if any of these are garbage collector options and add them to options under garbage_collector instead
-			gcName := detectGarbageCollector(addOpts.([]interface{}))
+			gcName := detectGarbageCollector(addOpts.([]any))
 
 			// If a GC was detected and garbage_collector isn't already set, set it
 			if gcName != "" && options["garbage_collector"] == nil {
@@ -297,7 +297,7 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 				}
 			} else {
 				// No GC detected or garbage_collector already set, just add all options
-				for _, v := range addOpts.([]interface{}) {
+				for _, v := range addOpts.([]any) {
 					targetOptions = append(targetOptions, v.(string))
 				}
 			}
@@ -320,7 +320,7 @@ func createServerJVMOptions(options map[string]interface{}, filename, sourceDir,
 	}
 
 	if options == nil {
-		options = make(map[string]interface{})
+		options = make(map[string]any)
 	}
 
 	// If filename matches jvm.*-server.options and has garbage_collector setting
@@ -416,7 +416,7 @@ var gcOptionMapping = map[string]string{
 	"-XX:+UseZGC":             ZGC,
 }
 
-func detectGarbageCollector(opts []interface{}) string {
+func detectGarbageCollector(opts []any) string {
 	for _, opt := range opts {
 		optStr := opt.(string)
 		for flagPattern, gcType := range gcOptionMapping {
@@ -541,7 +541,7 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 	}
 
 	// Unmarshal, Marshal to remove all comments (and some fields if necessary)
-	cassandraYaml := make(map[string]interface{})
+	cassandraYaml := make(map[string]any)
 
 	if err := yaml.Unmarshal(yamlFile, cassandraYaml); err != nil {
 		return err
@@ -577,12 +577,12 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 	return writeYaml(merged, targetFile)
 }
 
-func k8ssandraOverrides(merged map[string]interface{}, configInput *ConfigInput, nodeInfo *NodeInfo) map[string]interface{} {
+func k8ssandraOverrides(merged map[string]any, configInput *ConfigInput, nodeInfo *NodeInfo) map[string]any {
 	// Add fields which we require and their values, these should override whatever user sets
-	merged["seed_provider"] = []map[string]interface{}{
+	merged["seed_provider"] = []map[string]any{
 		{
 			"class_name": "org.apache.cassandra.locator.K8SeedProvider",
-			"parameters": []map[string]interface{}{
+			"parameters": []map[string]any{
 				{
 					"seeds": configInput.ClusterInfo.Seeds,
 				},
@@ -616,7 +616,7 @@ func k8ssandraOverrides(merged map[string]interface{}, configInput *ConfigInput,
 	return merged
 }
 
-func writeYaml(doc map[string]interface{}, targetFile string) error {
+func writeYaml(doc map[string]any, targetFile string) error {
 	b, err := yaml.Marshal(doc)
 	if err != nil {
 		return err
