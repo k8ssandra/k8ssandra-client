@@ -109,12 +109,12 @@ func TryScheduling(ctx context.Context, cli client.Client, proposedPods []*corev
 		return err
 	}
 
-	plugins := []framework.FilterPlugin{
-		noderesourcesPlugin.(framework.FilterPlugin),
-		schedulablePlugin.(framework.FilterPlugin),
-		nodeaffinityPlugin.(framework.FilterPlugin),
+	plugins := []schedframework.FilterPlugin{
+		noderesourcesPlugin.(schedframework.FilterPlugin),
+		schedulablePlugin.(schedframework.FilterPlugin),
+		nodeaffinityPlugin.(schedframework.FilterPlugin),
 		// interpodaffinityPlugin.(framework.FilterPlugin),
-		tainttolerationPlugin.(framework.FilterPlugin),
+		tainttolerationPlugin.(schedframework.FilterPlugin),
 	}
 
 	succeededPods := 0
@@ -128,10 +128,10 @@ NextPod:
 
 		candidateNodes := convertNodeInfos(usableNodes)
 		skippedPlugins := map[string]struct{}{}
-		var preFilterResult *framework.PreFilterResult
+		var preFilterResult *schedframework.PreFilterResult
 
 		for _, plugin := range plugins {
-			prefilterPlugin, ok := plugin.(framework.PreFilterPlugin)
+			prefilterPlugin, ok := plugin.(schedframework.PreFilterPlugin)
 			if !ok {
 				continue
 			}
