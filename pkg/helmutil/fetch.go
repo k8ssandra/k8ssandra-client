@@ -9,14 +9,16 @@ import (
 	"time"
 
 	"github.com/k8ssandra/k8ssandra-client/pkg/util"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/repo"
+	"helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/downloader"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/kube"
+	releaseiface "helm.sh/helm/v4/pkg/release"
+	release "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/repo/v1"
 )
 
 // DownloadChartRelease fetches the k8ssandra target version and extracts it to a directory which path is returned
@@ -128,13 +130,25 @@ func GetChartTargetDir(repoName, chartName string) (string, error) {
 
 func Release(cfg *action.Configuration, releaseName string) (*release.Release, error) {
 	getAction := action.NewGet(cfg)
-	return getAction.Run(releaseName)
+	return legacyRelease(getAction.Run(releaseName))
 }
 
 func ListInstallations(cfg *action.Configuration) ([]*release.Release, error) {
 	listAction := action.NewList(cfg)
 	listAction.AllNamespaces = true
-	return listAction.Run()
+	releases, err := listAction.Run()
+	if err != nil {
+		return nil, err
+	}
+	legacyReleases := make([]*release.Release, 0, len(releases))
+	for _, rel := range releases {
+		legacyRelease, err := legacyRelease(rel, nil)
+		if err != nil {
+			return nil, err
+		}
+		legacyReleases = append(legacyReleases, legacyRelease)
+	}
+	return legacyReleases, nil
 }
 
 func Install(cfg *action.Configuration, releaseName, path, namespace string, values map[string]any, devel bool, skipCRDs bool, timeout time.Duration) (*release.Release, error) {
@@ -142,8 +156,8 @@ func Install(cfg *action.Configuration, releaseName, path, namespace string, val
 	installAction.ReleaseName = releaseName
 	installAction.Namespace = namespace
 	installAction.CreateNamespace = true
-	installAction.Atomic = true
-	installAction.Wait = true
+	installAction.RollbackOnFailure = true
+	installAction.WaitStrategy = kube.StatusWatcherStrategy
 	if timeout > 0 {
 		installAction.Timeout = timeout
 	}
@@ -159,10 +173,10 @@ func Install(cfg *action.Configuration, releaseName, path, namespace string, val
 		return nil, err
 	}
 
-	return installAction.Run(chartReq, values)
+	return legacyRelease(installAction.Run(chartReq, values))
 }
 
-func Uninstall(cfg *action.Configuration, releaseName string) (*release.UninstallReleaseResponse, error) {
+func Uninstall(cfg *action.Configuration, releaseName string) (*releaseiface.UninstallReleaseResponse, error) {
 	uninstallAction := action.NewUninstall(cfg)
 	return uninstallAction.Run(releaseName)
 }
@@ -170,4 +184,19 @@ func Uninstall(cfg *action.Configuration, releaseName string) (*release.Uninstal
 // ValuesYaml fetches the chartVersion's values.yaml file for editing purposes
 func ValuesYaml(chartVersion string) (io.Reader, error) {
 	return nil, nil
+}
+
+// Long story short, this PR isn't intended to support the new features in Helm v4, just make this thing work as before.
+func legacyRelease(rel releaseiface.Releaser, err error) (*release.Release, error) {
+	if err != nil {
+		return nil, err
+	}
+	switch r := rel.(type) {
+	case *release.Release:
+		return r, nil
+	case release.Release:
+		return &r, nil
+	default:
+		return nil, errors.New("unsupported Helm release type")
+	}
 }
