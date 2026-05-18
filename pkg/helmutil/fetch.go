@@ -46,6 +46,7 @@ func DownloadChartRelease(repoName, repoURL, chartName, chartVersion string, opt
 		},
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
+		ContentCache:     settings.ContentCache,
 	}
 
 	c.Options = append(c.Options, options...)
