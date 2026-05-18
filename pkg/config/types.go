@@ -27,13 +27,13 @@ import "net"
 // From cass-operator JSON input
 
 type ConfigInput struct {
-	ClusterInfo     ClusterInfo            `json:"cluster-info"`
-	DatacenterInfo  DatacenterInfo         `json:"datacenter-info"`
-	CassYaml        map[string]interface{} `json:"cassandra-yaml,omitempty"`
-	ServerOptions   map[string]interface{} `json:"jvm-server-options,omitempty"`
-	ServerOptions11 map[string]interface{} `json:"jvm11-server-options,omitempty"`
-	ServerOptions17 map[string]interface{} `json:"jvm17-server-options,omitempty"`
-	CassandraEnv    CassandraEnvOptions    `json:"cassandra-env-sh,omitempty"`
+	ClusterInfo     ClusterInfo         `json:"cluster-info"`
+	DatacenterInfo  DatacenterInfo      `json:"datacenter-info"`
+	CassYaml        map[string]any      `json:"cassandra-yaml,omitempty"`
+	ServerOptions   map[string]any      `json:"jvm-server-options,omitempty"`
+	ServerOptions11 map[string]any      `json:"jvm11-server-options,omitempty"`
+	ServerOptions17 map[string]any      `json:"jvm17-server-options,omitempty"`
+	CassandraEnv    CassandraEnvOptions `json:"cassandra-env-sh"`
 
 	// At some point, parse the remaining unknown keys when we decide what to do with them..
 }

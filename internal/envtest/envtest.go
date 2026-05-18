@@ -11,7 +11,6 @@ import (
 	"github.com/k8ssandra/k8ssandra-client/pkg/kubernetes"
 	k8ssandrataskapi "github.com/k8ssandra/k8ssandra-operator/apis/control/v1alpha1"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	"k8s.io/utils/ptr"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -65,7 +64,7 @@ func NewKindEnvironment(ctx context.Context, cluster KindManager) *Environment {
 		CRDDirectoryPaths: []string{
 			filepath.Join(RootDir(), "testfiles", "crd"),
 		},
-		UseExistingCluster:    ptr.To(true),
+		UseExistingCluster:    new(true),
 		ErrorIfCRDPathMissing: true,
 		Config:                cluster.RestConfig,
 	}

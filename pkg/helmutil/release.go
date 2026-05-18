@@ -9,11 +9,12 @@ import (
 
 	"github.com/k8ssandra/k8ssandra-client/pkg/util"
 	"gopkg.in/yaml.v3"
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v4/pkg/action"
+	chartcommon "helm.sh/helm/v4/pkg/chart"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/cli"
+	release "helm.sh/helm/v4/pkg/release/v1"
 )
 
 // ChartVersion gets the release's chart version or returns an error if it did not exist
@@ -27,7 +28,7 @@ func ChartVersion(cfg *action.Configuration, releaseName string) (*chart.Chart, 
 }
 
 // SetValues returns the deployed Helm releases modified values
-func SetValues(cfg *action.Configuration, releaseName string) (map[string]interface{}, error) {
+func SetValues(cfg *action.Configuration, releaseName string) (map[string]any, error) {
 	client := action.NewGetValues(cfg)
 	return client.Run(releaseName)
 }
@@ -44,7 +45,12 @@ func UpgradeValues(cfg *action.Configuration, chartDir, chartName, releaseName s
 	if err != nil {
 		return nil, err
 	}
-	if req := ch.Metadata.Dependencies; req != nil {
+
+	ac, err := chartcommon.NewAccessor(ch)
+	if err != nil {
+		return nil, err
+	}
+	if req := ac.MetaDependencies(); len(req) > 0 {
 		if err := action.CheckDependencies(ch, req); err != nil {
 			// TODO We should autodownload these
 			return nil, err
@@ -56,14 +62,14 @@ func UpgradeValues(cfg *action.Configuration, chartDir, chartName, releaseName s
 		return nil, err
 	}
 
-	var values map[string]interface{}
+	var values map[string]any
 	err = yaml.Unmarshal(data, &values)
 	if err != nil {
 		return nil, err
 	}
 
 	// Needs chart and vals
-	return u.Run(releaseName, ch, values)
+	return legacyRelease(u.Run(releaseName, ch, values))
 }
 
 func MergeValuesFile(cfg *action.Configuration, settings *cli.EnvSettings, chartDir, chartVersion, chartName, releaseName string) (*os.File, error) {

@@ -155,7 +155,7 @@ func (c *estimateOptions) Run() error {
 
 func makePods(count int, resources corev1.ResourceList) []*corev1.Pod {
 	pods := make([]*corev1.Pod, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		pods[i] = &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "a",

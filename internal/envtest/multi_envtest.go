@@ -14,12 +14,12 @@ type MultiK8sEnvironment []*Environment
 func RunMulti(m *testing.M, setupFunc func(e *MultiK8sEnvironment), numClusters int) (code int) {
 	e := make(MultiK8sEnvironment, numClusters)
 	ctx := ctrl.SetupSignalHandler()
-	for i := 0; i < numClusters; i++ {
+	for i := range numClusters {
 		e[i] = NewEnvironment(ctx)
 		e[i].Start()
 	}
 	defer func() {
-		for i := 0; i < numClusters; i++ {
+		for i := range numClusters {
 			e[i].Stop()
 		}
 	}()
@@ -32,7 +32,7 @@ func RunMultiKind(setupFunc func(e *MultiK8sEnvironment), topology []int, testDi
 	e := make(MultiK8sEnvironment, len(topology))
 	ctx := ctrl.SetupSignalHandler()
 	var wg sync.WaitGroup
-	for i := 0; i < len(topology); i++ {
+	for i := range topology {
 		cluster := KindManager{
 			ClusterName:        "cluster" + strconv.Itoa(i),
 			KubeconfigLocation: os.NewFile(0, testDir+"/cluster"+strconv.Itoa(i)),
@@ -50,7 +50,7 @@ func RunMultiKind(setupFunc func(e *MultiK8sEnvironment), topology []int, testDi
 	setupFunc(&e)
 	return func() {
 		var wg sync.WaitGroup
-		for i := 0; i < len(topology); i++ {
+		for i := range topology {
 			wg.Add(1)
 			go func(i int) {
 				defer wg.Done()

@@ -81,7 +81,7 @@ func setWorkerNodes(workers int) ([]byte, error) {
 	cluster.Nodes = []kindapi.Node{
 		{Role: kindapi.ControlPlaneRole},
 	}
-	for i := 0; i < workers; i++ {
+	for range workers {
 		cluster.Nodes = append(cluster.Nodes, kindapi.Node{Role: kindapi.WorkerRole})
 	}
 	return yaml.Marshal(cluster)
