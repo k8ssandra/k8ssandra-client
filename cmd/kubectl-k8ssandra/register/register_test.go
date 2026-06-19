@@ -2,6 +2,7 @@ package register
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -49,10 +50,14 @@ func TestRegister(t *testing.T) {
 		return err1 == nil && err2 == nil
 	}, time.Second*6, time.Millisecond*100)
 
+	// Test configuration
+	saName := "k8ssandra-operator"
+	releaseName := "k8ssandra-operator"
+
 	// Create ClusterRoles that the ClusterRoleBindings will reference
 	k8ssandraClusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "releasename-k8ssandra-operator",
+			Name: fmt.Sprintf("%s-k8ssandra-operator", releaseName),
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -66,7 +71,7 @@ func TestRegister(t *testing.T) {
 
 	cassClusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "releasename-cass-operator",
+			Name: fmt.Sprintf("%s-cass-operator", releaseName),
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -106,8 +111,8 @@ func TestRegister(t *testing.T) {
 		DestContext:      "default-context",
 		SourceNamespace:  "source-namespace",
 		DestNamespace:    "dest-namespace",
-		ServiceAccount:   "k8ssandra-operator",
-		ReleaseName:      "k8ssandra-operator",
+		ServiceAccount:   saName,
+		ReleaseName:      releaseName,
 		Context:          ctx,
 		DestinationName:  "test-destination",
 	}
@@ -162,24 +167,26 @@ func TestRegister(t *testing.T) {
 		destKubeconfig.AuthInfos["test-destination"].Token)
 
 	// Verify ClusterRoleBindings were created
+	// ClusterRoleBinding name pattern: {ServiceAccount}-k8ssandra-operator
+	// ClusterRole reference pattern: {ReleaseName}-k8ssandra-operator
 	k8ssandraBinding := &rbacv1.ClusterRoleBinding{}
 	require.NoError(client1.Get(ctx,
-		client.ObjectKey{Name: "releasename-k8ssandra-operator"},
+		client.ObjectKey{Name: fmt.Sprintf("%s-k8ssandra-operator", saName)},
 		k8ssandraBinding))
-	require.Equal("releasename-k8ssandra-operator", k8ssandraBinding.RoleRef.Name)
+	require.Equal(fmt.Sprintf("%s-k8ssandra-operator", releaseName), k8ssandraBinding.RoleRef.Name)
 	require.Equal("ClusterRole", k8ssandraBinding.RoleRef.Kind)
 	require.Len(k8ssandraBinding.Subjects, 1)
-	require.Equal("k8ssandra-operator", k8ssandraBinding.Subjects[0].Name)
+	require.Equal(saName, k8ssandraBinding.Subjects[0].Name)
 	require.Equal("source-namespace", k8ssandraBinding.Subjects[0].Namespace)
 
 	cassBinding := &rbacv1.ClusterRoleBinding{}
 	require.NoError(client1.Get(ctx,
-		client.ObjectKey{Name: "k8ssandra-operator-cass-operator"},
+		client.ObjectKey{Name: fmt.Sprintf("%s-cass-operator", saName)},
 		cassBinding))
-	require.Equal("releasename-cass-operator", cassBinding.RoleRef.Name)
+	require.Equal(fmt.Sprintf("%s-cass-operator", releaseName), cassBinding.RoleRef.Name)
 	require.Equal("ClusterRole", cassBinding.RoleRef.Kind)
 	require.Len(cassBinding.Subjects, 1)
-	require.Equal("k8ssandra-operator", cassBinding.Subjects[0].Name)
+	require.Equal(saName, cassBinding.Subjects[0].Name)
 	require.Equal("source-namespace", cassBinding.Subjects[0].Namespace)
 }
 
