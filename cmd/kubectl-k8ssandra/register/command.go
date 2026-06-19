@@ -30,6 +30,7 @@ func SetupRegisterClusterCmd(cmd *cobra.Command, streams genericclioptions.IOStr
 	registerClusterCmd.Flags().String("dest-namespace", "k8ssandra-operator", "namespace where secret and clientConfig will be created on destination cluster")
 	registerClusterCmd.Flags().String("serviceaccount-name", "k8ssandra-operator", "serviceaccount name for destination cluster")
 	registerClusterCmd.Flags().String("destination-name", "", "name for remote clientConfig and secret on destination cluster")
+	registerClusterCmd.Flags().String("source-release-name", "k8ssandra-operator", "release name used in the source (data plane) cluster for ClusterRole references (e.g., if ClusterRoles are named 'my-release-k8ssandra-operator', use 'my-release')")
 	registerClusterCmd.Flags().String("override-src-ip", "", "override source IP for when you need to specify a different IP for the source cluster than is contained in kubeconfig")
 	registerClusterCmd.Flags().String("override-src-port", "", "override source port for when you need to specify a different port for the source cluster than is contained in src kubeconfig")
 
@@ -77,6 +78,7 @@ func NewRegistrationExecutorFromRegisterClusterCmd(cmd cobra.Command) *Registrat
 		SourceNamespace:    cmd.Flag("source-namespace").Value.String(),
 		DestNamespace:      cmd.Flag("dest-namespace").Value.String(),
 		ServiceAccount:     cmd.Flag("serviceaccount-name").Value.String(),
+		ReleaseName:        cmd.Flag("source-release-name").Value.String(),
 		OverrideSourceIP:   cmd.Flag("override-src-ip").Value.String(),
 		OverrideSourcePort: cmd.Flag("override-src-port").Value.String(),
 		Context:            cmd.Context(),
