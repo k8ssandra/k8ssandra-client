@@ -30,6 +30,26 @@ on:
                 description: 'Secret name to be used as GitHub token if gitRepo is set'
                 required: false
                 type: string
+            targetDockerRegistry:
+                description: 'Target docker registry'
+                required: false
+                default: 'docker.io'
+                type: string
+            targetDockerRepo:
+                description: 'Target docker repository where images are published'
+                required: false
+                default: 'k8ssandra'
+                type: string
+            targetDockerRepoUsername:
+                description: 'Target docker repository username'
+                required: false
+                default: 'DOCKER_HUB_USERNAME'
+                type: string
+            targetDockerRepoPassword:
+                description: 'Target docker repository password'
+                required: false
+                default: 'DOCKER_HUB_PASSWORD'
+                type: string
 jobs:
     create_the_images:
       strategy:
@@ -43,23 +63,26 @@ jobs:
       runs-on: ${{ matrix.runner }}
       env:
         GH_TOKEN: ${{ secrets[format('{0}', inputs.tokenSecret)] }}
+        REGISTRY_USERNAME: ${{ secrets[format('{0}', inputs.targetDockerRepoUsername)] }}
+        REGISTRY_PASSWORD: ${{ secrets[format('{0}', inputs.targetDockerRepoPassword)] }}
       steps:
         - name: Check out code into the Go module directory
           uses: actions/checkout@v6
         - name: Set up Docker Buildx
           uses: docker/setup-buildx-action@v3
-        - name: Login to DockerHub
+        - name: Login to the docker registry
           if: ${{ !env.ACT }}
           uses: docker/login-action@v3
           with:
-            username: ${{ secrets.DOCKER_HUB_USERNAME }}
-            password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+            registry: ${{ inputs.targetDockerRegistry }}
+            username: ${{ env.REGISTRY_USERNAME }}
+            password: ${{ env.REGISTRY_PASSWORD }}
         - name: Docker meta
           id: meta
           uses: docker/metadata-action@v5
           with:
             images: |
-              k8ssandra/k8ssandra-client
+              ${{ inputs.targetDockerRegistry }}/${{ inputs.targetDockerRepo }}/k8ssandra-client
             tags: |
               type=raw,value=${{ inputs.chartName }}-${{ inputs.chartVersion }}
         - name: Download the requested charts
@@ -98,7 +121,7 @@ jobs:
             file: cmd/kubectl-k8ssandra/Dockerfile
             platforms: ${{ matrix.platform }}
             context: .
-            tags: k8ssandra/k8ssandra-client
+            tags: ${{ inputs.targetDockerRegistry }}/${{ inputs.targetDockerRepo }}/k8ssandra-client
             push: ${{ github.event_name != 'pull_request' }}
             outputs: type=image,push-by-digest=true,name-canonical=true
         - name: Export digest
@@ -115,6 +138,10 @@ jobs:
             retention-days: 1
     merge_the_images:
       runs-on: ubuntu-latest
+      env:
+        GH_TOKEN: ${{ secrets[format('{0}', inputs.tokenSecret)] }}
+        REGISTRY_USERNAME: ${{ secrets[format('{0}', inputs.targetDockerRepoUsername)] }}
+        REGISTRY_PASSWORD: ${{ secrets[format('{0}', inputs.targetDockerRepoPassword)] }}
       needs:
         - create_the_images
       steps:
@@ -124,11 +151,13 @@ jobs:
             path: ${{ runner.temp }}/digests
             pattern: digests-*
             merge-multiple: true
-        - name: Login to DockerHub
+        - name: Login to the docker registry
+          if: ${{ !env.ACT }}
           uses: docker/login-action@v3
           with:
-            username: ${{ secrets.DOCKER_HUB_USERNAME }}
-            password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+            registry: ${{ inputs.targetDockerRegistry }}
+            username: ${{ env.REGISTRY_USERNAME }}
+            password: ${{ env.REGISTRY_PASSWORD }}
         - name: Set up Docker Buildx
           uses: docker/setup-buildx-action@v3
         - name: Docker meta
@@ -136,11 +165,11 @@ jobs:
           uses: docker/metadata-action@v5
           with:
             images: |
-              k8ssandra/k8ssandra-client
+              ${{ inputs.targetDockerRegistry }}/${{ inputs.targetDockerRepo }}/k8ssandra-client
             tags: |
               type=raw,value=${{ inputs.chartName }}-${{ inputs.chartVersion }}
         - name: Create manifest list and push
           working-directory: ${{ runner.temp }}/digests
           run: |
             docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-              $(printf 'k8ssandra/k8ssandra-client@sha256:%s ' *)
+              $(printf '${{ inputs.targetDockerRegistry }}/${{ inputs.targetDockerRepo }}/k8ssandra-client@sha256:%s ' *)
