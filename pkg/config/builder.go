@@ -28,9 +28,6 @@ const (
 	// $CASSANDRA_CONF could modify this, but we override it in the mgmt-api
 	defaultInputDir = "/cassandra-base-config"
 
-	// default directory under configInputDir which could include per pod modifications to the configuration
-	defaultPodSpecificDir = "override"
-
 	// docker-entrypoint.sh will copy the files from here, so we need all the outputs to target this
 	defaultOutputDir = "/config"
 
@@ -43,14 +40,12 @@ const (
 type Builder struct {
 	configInputDir  string
 	configOutputDir string
-	podSpecificDir  string
 }
 
-func NewBuilder(overrideConfigInput, overrideConfigOutput, overridePodSpecificDir string) *Builder {
+func NewBuilder(overrideConfigInput, overrideConfigOutput string) *Builder {
 	b := &Builder{
 		configInputDir:  defaultInputDir,
 		configOutputDir: defaultOutputDir,
-		podSpecificDir:  defaultPodSpecificDir,
 	}
 
 	if overrideConfigInput != "" {
@@ -59,10 +54,6 @@ func NewBuilder(overrideConfigInput, overrideConfigOutput, overridePodSpecificDi
 
 	if overrideConfigOutput != "" {
 		b.configOutputDir = overrideConfigOutput
-	}
-
-	if overridePodSpecificDir != "" {
-		b.podSpecificDir = overridePodSpecificDir
 	}
 
 	return b
@@ -86,25 +77,10 @@ func (b *Builder) Build(ctx context.Context) error {
 
 	log.Infof("Parsed ConfigInput and NodeInfo for node %s", nodeInfo.Name)
 
-	// Read optional per-pod overrides from inputDir/<POD_NAME>.yaml|json
-	podOverrides, err := readPodOverrides(b.configInputDir, b.podSpecificDir, nodeInfo)
-	if err != nil {
-		return err
-	}
+	podOverrides := podOverridesForNode(configInput, nodeInfo)
 
 	// Apply non-cassandra.yaml overrides directly into configInput so they participate in standard merging
-	if podOverrides != nil {
-		// Merge cassandra-env options
-		if podOverrides.CassandraEnv.MallocArenaMax > 0 {
-			configInput.CassandraEnv.MallocArenaMax = podOverrides.CassandraEnv.MallocArenaMax
-		}
-		if podOverrides.CassandraEnv.HeapDumpDir != "" {
-			configInput.CassandraEnv.HeapDumpDir = podOverrides.CassandraEnv.HeapDumpDir
-		}
-		if len(podOverrides.CassandraEnv.AdditionalOpts) > 0 {
-			configInput.CassandraEnv.AdditionalOpts = append(configInput.CassandraEnv.AdditionalOpts, podOverrides.CassandraEnv.AdditionalOpts...)
-		}
-	}
+	configInput.CassandraEnv = mergeCassandraEnvOptions(configInput.CassandraEnv, podOverrides.CassandraEnv)
 
 	// Create rack information
 	if err := createRackProperties(configInput, nodeInfo, b.configOutputDir); err != nil {
@@ -155,6 +131,33 @@ func parseConfigInputFromData(data string) (*ConfigInput, error) {
 	}
 
 	return configInput, nil
+}
+
+func podOverridesForNode(configInput *ConfigInput, nodeInfo *NodeInfo) *ConfigOverrides {
+	if nodeInfo == nil || nodeInfo.Name == "" {
+		return &ConfigOverrides{}
+	}
+
+	podOverrides, found := configInput.PodOverrides[nodeInfo.Name]
+	if !found {
+		return &ConfigOverrides{}
+	}
+
+	return &podOverrides
+}
+
+func mergeCassandraEnvOptions(lowerPriority, higherPriority CassandraEnvOptions) CassandraEnvOptions {
+	merged := lowerPriority
+	if higherPriority.MallocArenaMax > 0 {
+		merged.MallocArenaMax = higherPriority.MallocArenaMax
+	}
+	if higherPriority.HeapDumpDir != "" {
+		merged.HeapDumpDir = higherPriority.HeapDumpDir
+	}
+	if len(higherPriority.AdditionalOpts) > 0 {
+		merged.AdditionalOpts = append(merged.AdditionalOpts, higherPriority.AdditionalOpts...)
+	}
+	return merged
 }
 
 func parseNodeInfo() (*NodeInfo, error) {
@@ -284,7 +287,7 @@ func createCassandraEnv(configInput *ConfigInput, sourceDir, targetDir string) e
 }
 
 // createJVMOptions writes all the jvm*-server.options
-func createJVMOptions(configInput *ConfigInput, sourceDir, targetDir string, podOverrides *ConfigInput) error {
+func createJVMOptions(configInput *ConfigInput, sourceDir, targetDir string, podOverrides *ConfigOverrides) error {
 	if err := createServerJVMOptions(configInput.ServerOptions, podOverrides.ServerOptions, "jvm-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
@@ -599,44 +602,6 @@ func readJvmServerOptions(path string) ([]string, error) {
 	}
 
 	return options, nil
-}
-
-// readPodOverrides attempts to read per-pod overrides from inputDir/<POD_NAME>.yaml or .json.
-// Returns nil if no overrides are present.
-func readPodOverrides(inputDir, podSpecificDir string, nodeInfo *NodeInfo) (*ConfigInput, error) {
-	override := &ConfigInput{}
-	if nodeInfo.Name == "" {
-		return override, nil
-	}
-
-	podConfigPrefix := filepath.Join(inputDir, podSpecificDir, nodeInfo.Name)
-
-	// While YAML is not the format that CONFIG_FILE_DATA supports from cass-operator,
-	// we prefer this way of formatting if users are manually creating the overrides instead of the operator.
-	// We still prefer the same format as CONFIG_FILE_DATA as the primary one
-	yamlPath := podConfigPrefix + ".yaml"
-	jsonPath := podConfigPrefix + ".json"
-
-	if _, err := os.Stat(jsonPath); err == nil {
-		log.Infof("Found pod-specific JSON overrides at %s", jsonPath)
-		data, err := os.ReadFile(jsonPath)
-		if err != nil {
-			return nil, err
-		}
-		return parseConfigInputFromData(string(data))
-	} else if _, err := os.Stat(yamlPath); err == nil {
-		log.Infof("Found pod-specific YAML overrides at %s", yamlPath)
-		data, err := os.ReadFile(yamlPath)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := yaml.Unmarshal(data, override); err != nil {
-			return nil, err
-		}
-	}
-
-	return override, nil
 }
 
 func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string, finalOverrides map[string]interface{}) error {
