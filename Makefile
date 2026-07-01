@@ -1,4 +1,4 @@
-VERSION ?= 0.8.12
+VERSION ?= 0.8.14
 
 COMMIT := $(shell git rev-parse --short HEAD)
 DATE := $(shell date +%Y%m%d)
@@ -12,9 +12,6 @@ IMG ?= $(IMAGE_TAG_BASE):v$(VERSION)
 
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
-
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.35.x
 
 GO_FLAGS ?= -v
 
