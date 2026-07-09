@@ -841,4 +841,8 @@ func TestCopyFiles(t *testing.T) {
 	// We should have tempDir/jvm11-clients.options
 	_, err := os.Stat(filepath.Join(tempDir, "jvm11-clients.options"))
 	require.NoError(err)
+
+	// cassandra-jaas.config must be copied so that nodetool JMX auth works
+	_, err = os.Stat(filepath.Join(tempDir, "cassandra-jaas.config"))
+	require.NoError(err)
 }
