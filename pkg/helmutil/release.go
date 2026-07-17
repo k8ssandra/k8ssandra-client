@@ -2,10 +2,13 @@ package helmutil
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/k8ssandra/k8ssandra-client/pkg/util"
 	"gopkg.in/yaml.v3"
@@ -212,4 +215,59 @@ func recursiveMerge(from, into *yaml.Node) error {
 		return errors.New("can only merge mapping, scalar and sequence nodes")
 	}
 	return nil
+}
+
+func DeployedReleaseName(cfg *action.Configuration, namespace, chartNamePrefix string) (string, error) {
+	if namespace == "" {
+		return "", errors.New("namespace must not be empty")
+	}
+
+	listAction := action.NewList(cfg)
+	listAction.StateMask = action.ListDeployed
+	releases, err := listAction.Run()
+	if err != nil {
+		return "", fmt.Errorf("list deployed Helm releases in namespace %q: %w", namespace, err)
+	}
+
+	releaseNames := make(map[string]struct{}, len(releases))
+	for _, releaser := range releases {
+		rel, err := legacyRelease(releaser, nil)
+		if err != nil {
+			return "", fmt.Errorf("read deployed Helm release: %w", err)
+		}
+		if rel.Namespace != namespace {
+			continue
+		}
+		if chartNamePrefix != "" {
+			if rel.Chart == nil || rel.Chart.Metadata == nil {
+				continue
+			}
+			if !strings.HasPrefix(rel.Chart.Metadata.Name, chartNamePrefix) {
+				continue
+			}
+		}
+		releaseNames[rel.Name] = struct{}{}
+	}
+
+	switch len(releaseNames) {
+	case 0:
+		if chartNamePrefix != "" {
+			return "", fmt.Errorf("no deployed Helm release with chart name prefix %q found in namespace %q", chartNamePrefix, namespace)
+		}
+		return "", fmt.Errorf("no deployed Helm release found in namespace %q", namespace)
+	case 1:
+		for name := range releaseNames {
+			return name, nil
+		}
+	}
+
+	names := make([]string, 0, len(releaseNames))
+	for name := range releaseNames {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	if chartNamePrefix != "" {
+		return "", fmt.Errorf("multiple deployed Helm releases with chart name prefix %q found in namespace %q: %v", chartNamePrefix, namespace, names)
+	}
+	return "", fmt.Errorf("multiple deployed Helm releases found in namespace %q: %v", namespace, names)
 }
