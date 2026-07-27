@@ -44,14 +44,14 @@ func GetClientInNamespace(restConfig *rest.Config, namespace string) (Namespaced
 	// return c, nil
 }
 
-func CreateNamespaceIfNotExists(client client.Client, namespace string) error {
+func CreateNamespaceIfNotExists(ctx context.Context, client client.Client, namespace string) error {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
 		},
 	}
 
-	if err := client.Create(context.TODO(), ns); err != nil && !errors.IsAlreadyExists(err) {
+	if err := client.Create(ctx, ns); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 

@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"context"
 	"testing"
 
 	api "github.com/k8ssandra/cass-operator/apis/cassandra/v1beta1"
@@ -16,7 +15,7 @@ import (
 
 func TestSmokeResources(t *testing.T) {
 	require := require.New(t)
-	ctx := context.TODO()
+	ctx := t.Context()
 	cli := createClient()
 	require.NoError(cli.Create(ctx, makeNode("node1")))
 
@@ -35,7 +34,7 @@ func TestSmokeResources(t *testing.T) {
 
 func TestSmokeTolerations(t *testing.T) {
 	require := require.New(t)
-	ctx := context.TODO()
+	ctx := t.Context()
 	cli := createClient()
 	n := makeNode("node1")
 	n.Spec.Taints = []corev1.Taint{
@@ -68,7 +67,7 @@ func TestSmokeTolerations(t *testing.T) {
 
 func TestSmokeNodeAffinity(t *testing.T) {
 	require := require.New(t)
-	ctx := context.TODO()
+	ctx := t.Context()
 	cli := createClient()
 	n := makeNode("node1")
 	require.NoError(cli.Create(ctx, n))
@@ -106,7 +105,7 @@ func TestSmokeNodeAffinity(t *testing.T) {
 
 func TestSmokeInternodePodAffinity(t *testing.T) {
 	require := require.New(t)
-	ctx := context.TODO()
+	ctx := t.Context()
 	cli := createClient()
 	require.NoError(cli.Create(ctx, makeNode("node1")))
 	pod := makePod("pod1", makeResources(100, 100, 1))

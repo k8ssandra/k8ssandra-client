@@ -2,55 +2,39 @@ package config
 
 import "net"
 
-/*
-	(defrecord ClusterInfo [name seeds])
-	(defrecord DatacenterInfo [name
-							graph-enabled
-							solr-enabled
-							spark-enabled])
-	;; Note, we are using the current _address field names as of DSE 6.0.
-	;; Namely native_transport_address and native_transport_rpc_address.
-	;; Clients should not be passing in the old names.
-	(defrecord NodeInfo [name
-						rack
-						listen_address
-						broadcast_address
-						native_transport_address
-						native_transport_broadcast_address
-						initial_token
-						auto_bootstrap
-						agent_version
-						configured-paths
-						facts])
-*/
-
 // From cass-operator JSON input
 
 type ConfigInput struct {
-	ClusterInfo     ClusterInfo         `json:"cluster-info"`
-	DatacenterInfo  DatacenterInfo      `json:"datacenter-info"`
-	CassYaml        map[string]any      `json:"cassandra-yaml,omitempty"`
-	ServerOptions   map[string]any      `json:"jvm-server-options,omitempty"`
-	ServerOptions11 map[string]any      `json:"jvm11-server-options,omitempty"`
-	ServerOptions17 map[string]any      `json:"jvm17-server-options,omitempty"`
-	CassandraEnv    CassandraEnvOptions `json:"cassandra-env-sh"`
+	ClusterInfo     ClusterInfo    `json:"cluster-info" yaml:"cluster-info"`
+	DatacenterInfo  DatacenterInfo `json:"datacenter-info" yaml:"datacenter-info"`
+	ConfigOverrides `yaml:",inline"`
+	PodOverrides    map[string]ConfigOverrides `json:"pod-overrides,omitempty" yaml:"pod-overrides,omitempty"`
 
 	// At some point, parse the remaining unknown keys when we decide what to do with them..
 }
 
+type ConfigOverrides struct {
+	CassYaml        map[string]interface{} `json:"cassandra-yaml,omitempty" yaml:"cassandra-yaml,omitempty"`
+	ServerOptions   map[string]interface{} `json:"jvm-server-options,omitempty" yaml:"jvm-server-options,omitempty"`
+	ServerOptions11 map[string]interface{} `json:"jvm11-server-options,omitempty" yaml:"jvm11-server-options,omitempty"`
+	ServerOptions17 map[string]interface{} `json:"jvm17-server-options,omitempty" yaml:"jvm17-server-options,omitempty"`
+	ServerOptions21 map[string]interface{} `json:"jvm21-server-options,omitempty" yaml:"jvm21-server-options,omitempty"`
+	CassandraEnv    CassandraEnvOptions    `json:"cassandra-env-sh,omitempty" yaml:"cassandra-env-sh,omitempty"`
+}
+
 type CassandraEnvOptions struct {
-	MallocArenaMax int      `json:"malloc-arena-max,omitempty"`
-	HeapDumpDir    string   `json:"heap-dump-dir,omitempty"`
-	AdditionalOpts []string `json:"additional-jvm-opts,omitempty"`
+	MallocArenaMax int      `json:"malloc-arena-max,omitempty" yaml:"malloc-arena-max,omitempty"`
+	HeapDumpDir    string   `json:"heap-dump-dir,omitempty" yaml:"heap-dump-dir,omitempty"`
+	AdditionalOpts []string `json:"additional-jvm-opts,omitempty" yaml:"additional-jvm-opts,omitempty"`
 }
 
 type ClusterInfo struct {
-	Name  string `json:"name"`
-	Seeds string `json:"seeds"` // comma separated list of seeds
+	Name  string `json:"name" yaml:"name"`
+	Seeds string `json:"seeds" yaml:"seeds"` // comma separated list of seeds
 }
 
 type DatacenterInfo struct {
-	Name string `json:"name"`
+	Name string `json:"name" yaml:"name"`
 
 	// These are ignored for now
 	// "graph-enabled": graphEnabled,
