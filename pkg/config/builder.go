@@ -673,7 +673,7 @@ func createSidecarYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, 
 
 	sidecarYaml := make(map[string]any)
 	if err := yaml.Unmarshal(yamlFile, sidecarYaml); err != nil {
-		return err
+		return fmt.Errorf("invalid %s: %w", sidecarConfigName, err)
 	}
 
 	merged, err := mergeYaml(sidecarYaml, configInput.SidecarYaml)
@@ -681,7 +681,10 @@ func createSidecarYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, 
 		return err
 	}
 
-	merged = sidecarK8ssandraOverrides(merged, nodeInfo)
+	if err = sidecarK8ssandraOverrides(merged, nodeInfo); err != nil {
+		return err
+	}
+
 	return writeYaml(merged, filepath.Join(targetDir, sidecarConfigName))
 }
 
@@ -743,7 +746,13 @@ func k8ssandraOverrides(merged map[string]any, configInput *ConfigInput, nodeInf
 	return merged
 }
 
-func sidecarK8ssandraOverrides(merged map[string]any, nodeInfo *NodeInfo) map[string]any {
+func sidecarK8ssandraOverrides(merged map[string]any, nodeInfo *NodeInfo) (err error) {
+	defer func() {
+		if recover() != nil {
+			err = errors.New("invalid input sidecar.yaml: missing required fields or incorrect types")
+		}
+	}()
+
 	podIP := nodeInfo.ListenIP.String()
 
 	instances := merged["cassandra_instances"].([]any)
@@ -791,7 +800,7 @@ func sidecarK8ssandraOverrides(merged map[string]any, nodeInfo *NodeInfo) map[st
 	merged["sidecar_peer_health"].(map[string]any)["enabled"] = false
 	merged["schema_reporting"].(map[string]any)["enabled"] = false
 
-	return merged
+	return err
 }
 
 func writeYaml(doc map[string]any, targetFile string) error {
