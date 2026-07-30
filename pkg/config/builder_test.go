@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -201,6 +202,13 @@ func TestBuilderDefaults(t *testing.T) {
 	builder := NewBuilder("", "")
 	require.Equal(defaultInputDir, builder.configInputDir)
 	require.Equal(defaultOutputDir, builder.configOutputDir)
+	require.False(builder.sidecar)
+}
+
+func TestBuilderSidecarMode(t *testing.T) {
+	require := require.New(t)
+	builder := NewBuilder("", "", WithSidecar())
+	require.True(builder.sidecar)
 }
 
 func TestConfigInfoParsing(t *testing.T) {
@@ -287,6 +295,163 @@ func TestBuild(t *testing.T) {
 	require.Contains(fileNames, "cassandra.yaml")
 	require.Contains(fileNames, "jvm-server.options")
 	require.Contains(fileNames, "jvm11-server.options")
+
+	require.NotContains(fileNames, sidecarConfigName)
+}
+
+func TestBuildSidecarMergesSidecarYaml(t *testing.T) {
+	require := require.New(t)
+	inputDir := filepath.Join(envtest.RootDir(), "testfiles")
+	t.Setenv("CONFIG_FILE_DATA", `{
+		"sidecar-yaml": {
+			"sidecar": {
+				"port": 9143,
+				"request_timeout": "10m",
+				"endpoint_access_mode": "wrong",
+				"dns_resolver": "wrong"
+			},
+			"k8ssandra_test_setting": false
+		}
+	}`)
+	t.Setenv("POD_IP", "10.20.30.40")
+
+	outputDir := t.TempDir()
+	builder := NewBuilder(inputDir, outputDir, WithSidecar())
+	require.NoError(builder.Build(t.Context()))
+
+	entries, err := os.ReadDir(outputDir)
+	require.NoError(err)
+	require.Len(entries, 1)
+	require.Equal(sidecarConfigName, entries[0].Name())
+
+	contents, err := os.ReadFile(filepath.Join(outputDir, sidecarConfigName))
+	require.NoError(err)
+	actual := make(map[string]interface{})
+	require.NoError(yaml.Unmarshal(contents, actual))
+
+	require.NotEmpty(actual["cassandra_instances"])
+	require.Equal("0.0.0.0", actual["sidecar"].(map[string]interface{})["host"])
+	require.Equal("9143", actual["sidecar"].(map[string]interface{})["port"])
+	require.Equal("5m", actual["sidecar"].(map[string]interface{})["request_idle_timeout"])
+	require.Equal("10m", actual["sidecar"].(map[string]interface{})["request_timeout"])
+	require.Equal("analytics", actual["sidecar"].(map[string]interface{})["endpoint_access_mode"])
+	require.Equal("default_filter", actual["sidecar"].(map[string]interface{})["dns_resolver"])
+	require.Equal(false, actual["k8ssandra_test_setting"])
+
+	instances := actual["cassandra_instances"].([]interface{})
+	require.Equal("10.20.30.40", instances[0].(map[string]interface{})["host"])
+}
+
+func TestBuildSidecarReturnsErrorForInvalidYamlStructure(t *testing.T) {
+	require := require.New(t)
+	inputDir := t.TempDir()
+	require.NoError(os.WriteFile(
+		filepath.Join(inputDir, sidecarConfigName),
+		[]byte("cassandra_instances: invalid\n"),
+		0600,
+	))
+	t.Setenv("CONFIG_FILE_DATA", `{"sidecar-yaml": {}}`)
+	t.Setenv("POD_IP", "10.20.30.40")
+
+	builder := NewBuilder(inputDir, t.TempDir(), WithSidecar())
+	var err error
+	require.NotPanics(func() {
+		err = builder.Build(t.Context())
+	})
+	require.EqualError(err, "invalid input sidecar.yaml: missing required fields or incorrect types")
+}
+
+func TestSidecarK8ssandraOverrides(t *testing.T) {
+	require := require.New(t)
+	merged := map[string]any{
+		"cassandra_instances": []any{
+			map[string]any{
+				"id":          99,
+				"host":        "wrong-host",
+				"port":        9999,
+				"storage_dir": "/keep-me",
+			},
+		},
+		"sidecar": map[string]any{
+			"endpoint_access_mode": "wrong",
+			"dns_resolver":         "wrong",
+			"request_timeout":      "5m",
+		},
+		"ssl": map[string]any{
+			"enabled": false,
+		},
+		"driver_parameters": map[string]any{
+			"contact_points":  []string{"wrong-host:9999"},
+			"auth_provider":   map[string]any{"class_name": "wrong"},
+			"num_connections": 6,
+		},
+		"cluster_topology_monitor": map[string]any{
+			"enabled":          true,
+			"execute_interval": "1s",
+		},
+		"sidecar_peer_health": map[string]any{
+			"enabled":          true,
+			"execute_interval": "30s",
+		},
+		"schema_reporting": map[string]any{
+			"enabled":  true,
+			"endpoint": "http://localhost/schema",
+		},
+	}
+	nodeInfo := &NodeInfo{ListenIP: net.ParseIP("10.20.30.40")}
+
+	require.NoError(sidecarK8ssandraOverrides(merged, nodeInfo))
+
+	instances := merged["cassandra_instances"].([]any)
+	require.Len(instances, 1)
+	instance := instances[0].(map[string]any)
+	require.Equal(1, instance["id"])
+	require.Equal("10.20.30.40", instance["host"])
+	require.Equal(9042, instance["port"])
+	require.Equal("/keep-me", instance["storage_dir"])
+
+	sidecar := merged["sidecar"].(map[string]any)
+	require.Equal("analytics", sidecar["endpoint_access_mode"])
+	require.Equal("default_filter", sidecar["dns_resolver"])
+	require.Equal("5m", sidecar["request_timeout"])
+
+	require.Equal(map[string]any{
+		"enabled":            true,
+		"use_openssl":        true,
+		"handshake_timeout":  "10s",
+		"client_auth":        "REQUIRED",
+		"accepted_protocols": []string{"TLSv1.2", "TLSv1.3"},
+		"cipher_suites":      []string{},
+		"keystore": map[string]any{
+			"type":           "PKCS12",
+			"path":           "/management-api-certs/keystore.p12",
+			"password":       "changeit",
+			"check_interval": "5m",
+		},
+		"truststore": map[string]any{
+			"type":     "PKCS12",
+			"path":     "/management-api-certs/truststore.p12",
+			"password": "changeit",
+		},
+	}, merged["ssl"])
+
+	driverParameters := merged["driver_parameters"].(map[string]any)
+	require.Equal([]string{"10.20.30.40:9042"}, driverParameters["contact_points"])
+	require.Equal(map[string]any{
+		"class_name": "org.apache.cassandra.sidecar.cluster.auth.FileProvider",
+		"parameters": map[string]any{
+			"username_path": "/superuser-secret/username",
+			"password_path": "/superuser-secret/password",
+		},
+	}, driverParameters["auth_provider"])
+	require.Equal(6, driverParameters["num_connections"])
+
+	require.Equal(false, merged["cluster_topology_monitor"].(map[string]any)["enabled"])
+	require.Equal("1s", merged["cluster_topology_monitor"].(map[string]any)["execute_interval"])
+	require.Equal(false, merged["sidecar_peer_health"].(map[string]any)["enabled"])
+	require.Equal("30s", merged["sidecar_peer_health"].(map[string]any)["execute_interval"])
+	require.Equal(false, merged["schema_reporting"].(map[string]any)["enabled"])
+	require.Equal("http://localhost/schema", merged["schema_reporting"].(map[string]any)["endpoint"])
 }
 
 func TestCassandraYamlWriting(t *testing.T) {

@@ -33,6 +33,7 @@ const (
 
 	oldCassandraConfigName    = "cassandra.yaml"
 	latestCassandraConfigName = "cassandra_latest.yaml"
+	sidecarConfigName         = "sidecar.yaml"
 	ipv4Local                 = "0.0.0.0"
 	ipv6Local                 = "::"
 )
@@ -40,9 +41,18 @@ const (
 type Builder struct {
 	configInputDir  string
 	configOutputDir string
+	sidecar         bool
 }
 
-func NewBuilder(overrideConfigInput, overrideConfigOutput string) *Builder {
+type BuilderOption func(*Builder)
+
+func WithSidecar() BuilderOption {
+	return func(builder *Builder) {
+		builder.sidecar = true
+	}
+}
+
+func NewBuilder(overrideConfigInput, overrideConfigOutput string, opts ...BuilderOption) *Builder {
 	b := &Builder{
 		configInputDir:  defaultInputDir,
 		configOutputDir: defaultOutputDir,
@@ -54,6 +64,10 @@ func NewBuilder(overrideConfigInput, overrideConfigOutput string) *Builder {
 
 	if overrideConfigOutput != "" {
 		b.configOutputDir = overrideConfigOutput
+	}
+
+	for _, opt := range opts {
+		opt(b)
 	}
 
 	return b
@@ -76,6 +90,9 @@ func (b *Builder) Build(ctx context.Context) error {
 	}
 
 	log.Infof("Parsed ConfigInput and NodeInfo for node %s", nodeInfo.Name)
+	if b.sidecar {
+		return createSidecarYaml(configInput, nodeInfo, b.configInputDir, b.configOutputDir)
+	}
 
 	podOverrides := podOverridesForNode(configInput, nodeInfo)
 
@@ -625,24 +642,9 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 	}
 
 	// Merge with the ConfigInput's cassandraYaml changes - configInput.CassYaml changes have to take priority
-	merged, err := goalesce.DeepMerge(cassandraYaml, configInput.CassYaml)
+	merged, err := mergeYaml(cassandraYaml, configInput.CassYaml)
 	if err != nil {
 		return err
-	}
-
-	// This is to fix the behavior in goalesce where it doesn't know how to merge the bools
-	// since it assumes all the booleans are zero values if setting to false
-	for k, v := range configInput.CassYaml {
-		reflectValue := reflect.ValueOf(v)
-		if reflectValue.Kind() == reflect.Bool {
-			merged[k] = reflectValue.Bool()
-		}
-	}
-
-	for k, v := range configInput.CassYaml {
-		if v == nil {
-			merged[k] = nil
-		}
 	}
 
 	// Take the NodeInfo information and add those modifications to the merge output (a priority)
@@ -651,16 +653,9 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 
 	// Apply per-pod final overrides last (highest priority) - these could break the configuration
 	if len(finalOverrides) > 0 {
-		merged2, err := goalesce.DeepMerge(merged, finalOverrides)
+		merged2, err := mergeYaml(merged, finalOverrides)
 		if err != nil {
 			return err
-		}
-		// Same goalesce "hotfix"
-		for k, v := range finalOverrides {
-			rv := reflect.ValueOf(v)
-			if rv.Kind() == reflect.Bool {
-				merged2[k] = rv.Bool()
-			}
 		}
 		merged = merged2
 	}
@@ -668,6 +663,48 @@ func createCassandraYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir
 	// Write to the targetDir the new modified file
 	targetFile := filepath.Join(targetDir, "cassandra.yaml")
 	return writeYaml(merged, targetFile)
+}
+
+func createSidecarYaml(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string) error {
+	yamlFile, err := os.ReadFile(filepath.Join(sourceDir, sidecarConfigName))
+	if err != nil {
+		return err
+	}
+
+	sidecarYaml := make(map[string]any)
+	if err := yaml.Unmarshal(yamlFile, sidecarYaml); err != nil {
+		return fmt.Errorf("invalid %s: %w", sidecarConfigName, err)
+	}
+
+	merged, err := mergeYaml(sidecarYaml, configInput.SidecarYaml)
+	if err != nil {
+		return err
+	}
+
+	if err = sidecarK8ssandraOverrides(merged, nodeInfo); err != nil {
+		return err
+	}
+
+	return writeYaml(merged, filepath.Join(targetDir, sidecarConfigName))
+}
+
+func mergeYaml(lowerPriority, higherPriority map[string]any) (map[string]any, error) {
+	merged, err := goalesce.DeepMerge(lowerPriority, higherPriority)
+	if err != nil {
+		return nil, err
+	}
+
+	// goalesce treats false as a zero value, so explicitly preserve boolean overrides.
+	for key, value := range higherPriority {
+		if reflectValue := reflect.ValueOf(value); reflectValue.Kind() == reflect.Bool {
+			merged[key] = reflectValue.Bool()
+		}
+		if value == nil {
+			merged[key] = nil
+		}
+	}
+
+	return merged, nil
 }
 
 func k8ssandraOverrides(merged map[string]any, configInput *ConfigInput, nodeInfo *NodeInfo) map[string]any {
@@ -707,6 +744,63 @@ func k8ssandraOverrides(merged map[string]any, configInput *ConfigInput, nodeInf
 	merged["cluster_name"] = configInput.ClusterInfo.Name
 
 	return merged
+}
+
+func sidecarK8ssandraOverrides(merged map[string]any, nodeInfo *NodeInfo) (err error) {
+	defer func() {
+		if recover() != nil {
+			err = errors.New("invalid input sidecar.yaml: missing required fields or incorrect types")
+		}
+	}()
+
+	podIP := nodeInfo.ListenIP.String()
+
+	instances := merged["cassandra_instances"].([]any)
+	instance := instances[0].(map[string]any)
+	instance["id"] = 1
+	instance["host"] = podIP
+	instance["port"] = 9042
+	merged["cassandra_instances"] = instances
+
+	sidecar := merged["sidecar"].(map[string]any)
+	sidecar["endpoint_access_mode"] = "analytics"
+	sidecar["dns_resolver"] = "default_filter"
+
+	merged["ssl"] = map[string]any{
+		"enabled":            true,
+		"use_openssl":        true,
+		"handshake_timeout":  "10s",
+		"client_auth":        "REQUIRED",
+		"accepted_protocols": []string{"TLSv1.2", "TLSv1.3"},
+		"cipher_suites":      []string{},
+		"keystore": map[string]any{
+			"type":           "PKCS12",
+			"path":           "/management-api-certs/keystore.p12",
+			"password":       "changeit",
+			"check_interval": "5m",
+		},
+		"truststore": map[string]any{
+			"type":     "PKCS12",
+			"path":     "/management-api-certs/truststore.p12",
+			"password": "changeit",
+		},
+	}
+
+	driverParameters := merged["driver_parameters"].(map[string]any)
+	driverParameters["contact_points"] = []string{podIP + ":9042"}
+	driverParameters["auth_provider"] = map[string]any{
+		"class_name": "org.apache.cassandra.sidecar.cluster.auth.FileProvider",
+		"parameters": map[string]any{
+			"username_path": "/superuser-secret/username",
+			"password_path": "/superuser-secret/password",
+		},
+	}
+
+	merged["cluster_topology_monitor"].(map[string]any)["enabled"] = false
+	merged["sidecar_peer_health"].(map[string]any)["enabled"] = false
+	merged["schema_reporting"].(map[string]any)["enabled"] = false
+
+	return err
 }
 
 func writeYaml(doc map[string]any, targetFile string) error {

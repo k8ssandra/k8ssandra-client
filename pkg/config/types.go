@@ -5,8 +5,9 @@ import "net"
 // From cass-operator JSON input
 
 type ConfigInput struct {
-	ClusterInfo     ClusterInfo    `json:"cluster-info" yaml:"cluster-info"`
-	DatacenterInfo  DatacenterInfo `json:"datacenter-info" yaml:"datacenter-info"`
+	ClusterInfo     ClusterInfo            `json:"cluster-info" yaml:"cluster-info"`
+	DatacenterInfo  DatacenterInfo         `json:"datacenter-info" yaml:"datacenter-info"`
+	SidecarYaml     map[string]interface{} `json:"sidecar-yaml,omitempty" yaml:"sidecar-yaml,omitempty"` // This is not supported in the per-pod configuration at this moment
 	ConfigOverrides `yaml:",inline"`
 	PodOverrides    map[string]ConfigOverrides `json:"pod-overrides,omitempty" yaml:"pod-overrides,omitempty"`
 
