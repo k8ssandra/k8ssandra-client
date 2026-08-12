@@ -376,9 +376,12 @@ func TestSidecarK8ssandraOverrides(t *testing.T) {
 			"endpoint_access_mode": "wrong",
 			"dns_resolver":         "wrong",
 			"request_timeout":      "5m",
-		},
-		"ssl": map[string]any{
-			"enabled": false,
+			"coordination": map[string]any{
+				"cluster_lease_claim": map[string]any{
+					"enabled":          true,
+					"execute_interval": "100s",
+				},
+			},
 		},
 		"driver_parameters": map[string]any{
 			"contact_points":  []string{"wrong-host:9999"},
@@ -397,7 +400,47 @@ func TestSidecarK8ssandraOverrides(t *testing.T) {
 			"enabled":  true,
 			"endpoint": "http://localhost/schema",
 		},
+		"metrics": map[string]any{
+			"registry_name": "cassandra_sidecar",
+			"vertx": map[string]any{
+				"enabled":        true,
+				"expose_via_jmx": false,
+			},
+		},
 	}
+
+	// These are configured elsewhere if necessary, lets take them as input and verify that the driver_parameters is still
+	// correctly handled since it needs our overrides also
+	inputDriverParameters := merged["driver_parameters"].(map[string]any)
+	inputDriverParameters["auth_provider"] = map[string]any{
+		"class_name": "org.apache.cassandra.sidecar.cluster.auth.FileProvider",
+		"parameters": map[string]any{
+			"username_path": "/superuser-secret/username",
+			"password_path": "/superuser-secret/password",
+		},
+	}
+
+	// Same for ssl stuff..
+	merged["ssl"] = map[string]any{
+		"enabled":            true,
+		"use_openssl":        true,
+		"handshake_timeout":  "10s",
+		"client_auth":        "REQUIRED",
+		"accepted_protocols": []string{"TLSv1.2", "TLSv1.3"},
+		"cipher_suites":      []string{},
+		"keystore": map[string]any{
+			"type":           "PKCS12",
+			"path":           "/management-api-certs/keystore.p12",
+			"password":       "changeit",
+			"check_interval": "5m",
+		},
+		"truststore": map[string]any{
+			"type":     "PKCS12",
+			"path":     "/management-api-certs/truststore.p12",
+			"password": "changeit",
+		},
+	}
+
 	nodeInfo := &NodeInfo{ListenIP: net.ParseIP("10.20.30.40")}
 
 	require.NoError(sidecarK8ssandraOverrides(merged, nodeInfo))
@@ -414,6 +457,9 @@ func TestSidecarK8ssandraOverrides(t *testing.T) {
 	require.Equal("analytics", sidecar["endpoint_access_mode"])
 	require.Equal("default_filter", sidecar["dns_resolver"])
 	require.Equal("5m", sidecar["request_timeout"])
+	clusterLeaseClaim := sidecar["coordination"].(map[string]any)["cluster_lease_claim"].(map[string]any)
+	require.Equal(false, clusterLeaseClaim["enabled"])
+	require.Equal("100s", clusterLeaseClaim["execute_interval"])
 
 	require.Equal(map[string]any{
 		"enabled":            true,
@@ -452,6 +498,10 @@ func TestSidecarK8ssandraOverrides(t *testing.T) {
 	require.Equal("30s", merged["sidecar_peer_health"].(map[string]any)["execute_interval"])
 	require.Equal(false, merged["schema_reporting"].(map[string]any)["enabled"])
 	require.Equal("http://localhost/schema", merged["schema_reporting"].(map[string]any)["endpoint"])
+	metrics := merged["metrics"].(map[string]any)
+	require.Equal("cassandra_sidecar", metrics["registry_name"])
+	require.Equal(false, metrics["vertx"].(map[string]any)["enabled"])
+	require.Equal(false, metrics["vertx"].(map[string]any)["expose_via_jmx"])
 }
 
 func TestCassandraYamlWriting(t *testing.T) {

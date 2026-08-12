@@ -754,47 +754,23 @@ func sidecarK8ssandraOverrides(merged map[string]any, nodeInfo *NodeInfo) (err e
 	}()
 
 	podIP := nodeInfo.ListenIP.String()
+	sidecarPort := 9042
 
 	instances := merged["cassandra_instances"].([]any)
 	instance := instances[0].(map[string]any)
 	instance["id"] = 1
 	instance["host"] = podIP
-	instance["port"] = 9042
+	instance["port"] = sidecarPort
 	merged["cassandra_instances"] = instances
 
 	sidecar := merged["sidecar"].(map[string]any)
 	sidecar["endpoint_access_mode"] = "analytics"
 	sidecar["dns_resolver"] = "default_filter"
-
-	merged["ssl"] = map[string]any{
-		"enabled":            true,
-		"use_openssl":        true,
-		"handshake_timeout":  "10s",
-		"client_auth":        "REQUIRED",
-		"accepted_protocols": []string{"TLSv1.2", "TLSv1.3"},
-		"cipher_suites":      []string{},
-		"keystore": map[string]any{
-			"type":           "PKCS12",
-			"path":           "/management-api-certs/keystore.p12",
-			"password":       "changeit",
-			"check_interval": "5m",
-		},
-		"truststore": map[string]any{
-			"type":     "PKCS12",
-			"path":     "/management-api-certs/truststore.p12",
-			"password": "changeit",
-		},
-	}
+	sidecar["coordination"].(map[string]any)["cluster_lease_claim"].(map[string]any)["enabled"] = false
+	merged["metrics"].(map[string]any)["vertx"].(map[string]any)["enabled"] = false
 
 	driverParameters := merged["driver_parameters"].(map[string]any)
-	driverParameters["contact_points"] = []string{podIP + ":9042"}
-	driverParameters["auth_provider"] = map[string]any{
-		"class_name": "org.apache.cassandra.sidecar.cluster.auth.FileProvider",
-		"parameters": map[string]any{
-			"username_path": "/superuser-secret/username",
-			"password_path": "/superuser-secret/password",
-		},
-	}
+	driverParameters["contact_points"] = []string{fmt.Sprintf("%s:%d", podIP, sidecarPort)}
 
 	merged["cluster_topology_monitor"].(map[string]any)["enabled"] = false
 	merged["sidecar_peer_health"].(map[string]any)["enabled"] = false
