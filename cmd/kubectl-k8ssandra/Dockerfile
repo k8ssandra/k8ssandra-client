@@ -17,6 +17,8 @@ COPY pkg/ pkg/
 # Copy the cached helm charts
 RUN mkdir -p build/
 COPY build/ build/
+# For Openshift restricted-v2
+RUN chgrp -R 0 build/ && chmod -R g=u build/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o kubectl-k8ssandra cmd/kubectl-k8ssandra/main.go
@@ -62,7 +64,7 @@ LABEL description="Part of the toolset for the DataStax Kubernetes Operator for 
 
 WORKDIR /
 COPY --from=builder /workspace/kubectl-k8ssandra .
-COPY --from=builder --chown=65532:65532 /workspace/build/ .cache/
+COPY --from=builder --chown=65532:0 /workspace/build/ .cache/
 COPY --from=ubi-builder /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/pki/ca-trust/extracted/pem/
 COPY --from=ubi-builder --chown=65532:65532 --chmod=755 /workspace/yq /usr/bin/yq
 COPY --from=ubi-builder /usr/bin/kubectl /usr/bin/kubectl
