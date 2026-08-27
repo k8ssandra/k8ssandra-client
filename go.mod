@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/google/uuid v1.6.0
 	github.com/k8ssandra/cass-operator v1.32.0
-	github.com/k8ssandra/k8ssandra-operator v1.32.6
+	github.com/k8ssandra/k8ssandra-operator v1.32.7-0.20260826145427-f5ca571651b7
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -22,10 +22,10 @@ require (
 	k8s.io/api v0.36.4
 	k8s.io/apiextensions-apiserver v0.36.4
 	k8s.io/apimachinery v0.36.4
-	k8s.io/cli-runtime v0.36.3
+	k8s.io/cli-runtime v0.36.4
 	k8s.io/client-go v0.36.4
-	k8s.io/kube-scheduler v0.36.3
-	k8s.io/kubectl v0.36.3
+	k8s.io/kube-scheduler v0.36.4
+	k8s.io/kubectl v0.36.4
 	k8s.io/kubernetes v1.36.4
 	sigs.k8s.io/controller-runtime v0.24.1
 	sigs.k8s.io/kind v0.31.0
@@ -170,9 +170,9 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/apiserver v0.36.4 // indirect
 	k8s.io/component-base v0.36.4 // indirect
-	k8s.io/component-helpers v0.36.3 // indirect
-	k8s.io/controller-manager v0.36.3 // indirect
-	k8s.io/dynamic-resource-allocation v0.36.3 // indirect
+	k8s.io/component-helpers v0.36.4 // indirect
+	k8s.io/controller-manager v0.36.4 // indirect
+	k8s.io/dynamic-resource-allocation v0.36.4 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad // indirect
 	k8s.io/streaming v0.36.4 // indirect
