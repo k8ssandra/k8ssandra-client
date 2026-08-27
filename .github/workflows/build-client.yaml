@@ -70,15 +70,11 @@ jobs:
             ' govulncheck.json
             exit 1
           fi
-      - name: Debug Go toolchain
-        run: |
-          which go
-          go version
-          go env GOTOOLCHAIN
-          go env GOVERSION
-          make golangci-lint
-          ./bin/golangci-lint version
-          go version -m ./bin/golangci-lint | head -5
+      - name: Restore project Go version
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: 'go.mod'
+          cache: true
       - name: Unit Tests
         run: |
           make test
