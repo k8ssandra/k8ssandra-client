@@ -63,24 +63,6 @@ func TestFindCRDDirs(t *testing.T) {
 	require.Contains(dirs, chartDir+"/downstream-operator/crds")
 }
 
-// TestFindCRDDirs_SkipsHelmSubchartNamedCrds is a regression test for the
-// Mission Control 1.21 two-step upgrade failure.
-//
-// mimir-distributed ships a dependency called rollout-operator which itself
-// declares a Helm subchart dependency literally named "crds":
-//
-//	charts/mimir-distributed/charts/rollout-operator/charts/crds
-//
-// That directory contains Chart.yaml, README.md, values.yaml, and an inner
-// crds/ directory.  The old code accepted it as a CRD payload directory;
-// parseChartCRDs then tried to parse README.md and Chart.yaml, causing:
-//
-//	Object 'Kind' is missing
-//	invalid Yaml document separator
-//
-// The fix: any directory named "crds" whose direct parent is also named
-// "charts" is a Helm subchart dependency, not a payload folder, and must be
-// excluded regardless of the subCharts filter.
 func TestFindCRDDirs_SkipsHelmSubchartNamedCrds(t *testing.T) {
 	require := require.New(t)
 	chartDir, err := os.MkdirTemp("", "k8ssandra-mc121")
