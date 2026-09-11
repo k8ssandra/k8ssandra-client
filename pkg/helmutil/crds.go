@@ -164,6 +164,10 @@ func findCRDDirs(chartDir string, subCharts []string) ([]string, error) {
 			return false
 		}
 
+		if filepath.Base(filepath.Dir(path)) == "charts" {
+			return false
+		}
+
 		chartParts := strings.Split(filepath.Clean(path), string(os.PathSeparator))
 		chartName := chartParts[len(chartParts)-2]
 		subChart := false
