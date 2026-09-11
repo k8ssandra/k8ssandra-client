@@ -164,6 +164,16 @@ func findCRDDirs(chartDir string, subCharts []string) ([]string, error) {
 			return false
 		}
 
+		// A directory named "crds" whose direct parent is also named "charts"
+		// is itself a Helm subchart dependency (e.g.
+		// mimir-distributed/charts/rollout-operator/charts/crds in Mission
+		// Control 1.21), not a CRD payload directory.  Payload directories are
+		// always children of their owning chart (e.g. k8ssandra-operator/crds),
+		// never direct children of a charts/ folder.
+		if filepath.Base(filepath.Dir(path)) == "charts" {
+			return false
+		}
+
 		chartParts := strings.Split(filepath.Clean(path), string(os.PathSeparator))
 		chartName := chartParts[len(chartParts)-2]
 		subChart := false

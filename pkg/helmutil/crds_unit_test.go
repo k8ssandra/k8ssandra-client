@@ -62,3 +62,54 @@ func TestFindCRDDirs(t *testing.T) {
 	require.Len(dirs, 1)
 	require.Contains(dirs, chartDir+"/downstream-operator/crds")
 }
+
+// TestFindCRDDirs_SkipsHelmSubchartNamedCrds is a regression test for the
+// Mission Control 1.21 two-step upgrade failure.
+//
+// mimir-distributed ships a dependency called rollout-operator which itself
+// declares a Helm subchart dependency literally named "crds":
+//
+//	charts/mimir-distributed/charts/rollout-operator/charts/crds
+//
+// That directory contains Chart.yaml, README.md, values.yaml, and an inner
+// crds/ directory.  The old code accepted it as a CRD payload directory;
+// parseChartCRDs then tried to parse README.md and Chart.yaml, causing:
+//
+//	Object 'Kind' is missing
+//	invalid Yaml document separator
+//
+// The fix: any directory named "crds" whose direct parent is also named
+// "charts" is a Helm subchart dependency, not a payload folder, and must be
+// excluded regardless of the subCharts filter.
+func TestFindCRDDirs_SkipsHelmSubchartNamedCrds(t *testing.T) {
+	require := require.New(t)
+	chartDir, err := os.MkdirTemp("", "k8ssandra-mc121")
+	defer require.NoError(os.RemoveAll(chartDir))
+	require.NoError(err)
+
+	// Legitimate CRD payload directories — must always be returned.
+	require.NoError(os.MkdirAll(chartDir+"/charts/k8ssandra-operator/crds", 0755))
+	require.NoError(os.MkdirAll(chartDir+"/charts/k8ssandra-operator/charts/cass-operator/crds", 0755))
+
+	// The offending path: rollout-operator ships a Helm subchart named "crds".
+	// Its direct parent is "charts", so it must be excluded.
+	mimirCrdsChart := chartDir + "/charts/mimir-distributed/charts/rollout-operator/charts/crds"
+	require.NoError(os.MkdirAll(mimirCrdsChart, 0755))
+
+	dirs, err := findCRDDirs(chartDir, []string{"k8ssandra-operator", "cass-operator"})
+	require.NoError(err)
+
+	// Exactly the two legitimate directories — the mimir subchart must be absent.
+	require.Len(dirs, 2)
+	require.Contains(dirs, chartDir+"/charts/k8ssandra-operator/crds")
+	require.Contains(dirs, chartDir+"/charts/k8ssandra-operator/charts/cass-operator/crds")
+	require.NotContains(dirs, mimirCrdsChart)
+
+	// The exclusion must also hold when AllSubCharts is requested.
+	dirs, err = findCRDDirs(chartDir, []string{AllSubCharts})
+	require.NoError(err)
+
+	require.Contains(dirs, chartDir+"/charts/k8ssandra-operator/crds")
+	require.Contains(dirs, chartDir+"/charts/k8ssandra-operator/charts/cass-operator/crds")
+	require.NotContains(dirs, mimirCrdsChart)
+}
