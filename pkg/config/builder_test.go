@@ -565,6 +565,43 @@ func TestCassandraYamlWriting(t *testing.T) {
 	require.Equal(ipv6Local, cassandraYaml["rpc_address"])
 }
 
+func TestCassandraYamlIPv6PreferenceFromPodIP(t *testing.T) {
+	tests := []struct {
+		name           string
+		podIP          string
+		globalOverride map[string]any
+		podOverride    map[string]any
+		wantRPCAddress string
+		wantPreference any
+	}{
+		{"IPv6 pod", "fd00:10:244:4::7", nil, nil, ipv6Local, true},
+		{"IPv4 pod", "172.27.0.1", nil, nil, ipv4Local, nil},
+		{"global preference false", "fd00:10:244:4::7", map[string]any{"rpc_interface_prefer_ipv6": false}, nil, ipv6Local, false},
+		{"per-pod preference false", "fd00:10:244:4::7", nil, map[string]any{"rpc_interface_prefer_ipv6": false}, ipv6Local, false},
+		{"explicit address", "fd00:10:244:4::7", map[string]any{"rpc_address": ipv4Local}, nil, ipv4Local, true},
+		{"explicit preference on IPv4 pod", "172.27.0.1", map[string]any{"rpc_interface_prefer_ipv6": true}, nil, ipv6Local, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("POD_IP", tt.podIP)
+			nodeInfo, err := parseNodeInfo()
+			require.NoError(t, err)
+			configInput := &ConfigInput{ClusterInfo: ClusterInfo{Name: "test", Seeds: tt.podIP}}
+			configInput.CassYaml = tt.globalOverride
+			outputDir := t.TempDir()
+			inputDir := filepath.Join(envtest.RootDir(), "testfiles")
+			require.NoError(t, createCassandraYaml(configInput, nodeInfo, inputDir, outputDir, tt.podOverride))
+			contents, err := os.ReadFile(filepath.Join(outputDir, "cassandra.yaml"))
+			require.NoError(t, err)
+			output := map[string]any{}
+			require.NoError(t, yaml.Unmarshal(contents, &output))
+			assert.Equal(t, tt.wantRPCAddress, output["rpc_address"])
+			assert.Equal(t, tt.wantPreference, output["rpc_interface_prefer_ipv6"])
+		})
+	}
+}
+
 func TestCassandraBaseConfigFilePick(t *testing.T) {
 	require := require.New(t)
 	testFilesPath := filepath.Join(envtest.RootDir(), "testfiles")
