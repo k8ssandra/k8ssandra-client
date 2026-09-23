@@ -721,6 +721,11 @@ func k8ssandraOverrides(merged map[string]any, configInput *ConfigInput, nodeInf
 	}
 
 	merged["listen_address"] = nodeInfo.ListenIP.String()
+	if nodeInfo.ListenIP != nil && nodeInfo.ListenIP.To4() == nil {
+		if _, explicitPreference := configInput.CassYaml["rpc_interface_prefer_ipv6"]; !explicitPreference {
+			merged["rpc_interface_prefer_ipv6"] = true
+		}
+	}
 	// Only set rpc_address if it's empty or localhost
 	if merged["rpc_address"] == "" || merged["rpc_address"] == "localhost" {
 		ipv6 := merged["rpc_interface_prefer_ipv6"]
