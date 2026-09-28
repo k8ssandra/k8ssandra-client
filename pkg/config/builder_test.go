@@ -2,9 +2,11 @@ package config
 
 import (
 	"bufio"
+	"encoding/json"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/k8ssandra/k8ssandra-client/internal/envtest"
@@ -235,6 +237,7 @@ func TestParseNodeInfo(t *testing.T) {
 	require.Equal("172.27.0.1", nodeInfo.ListenIP.String())
 	require.Equal("172.27.0.1", nodeInfo.BroadcastIP.String())
 	require.Equal(ipv4Local, nodeInfo.RPCIP.String())
+	require.False(nodeInfo.IsIPv6)
 	require.Equal("r1", nodeInfo.Rack)
 
 	t.Setenv("POD_IP", "fd00:10:244:4::7")
@@ -244,6 +247,7 @@ func TestParseNodeInfo(t *testing.T) {
 	require.Equal("fd00:10:244:4::7", nodeInfo.ListenIP.String())
 	require.Equal("fd00:10:244:4::7", nodeInfo.BroadcastIP.String())
 	require.Equal(ipv6Local, nodeInfo.RPCIP.String())
+	require.True(nodeInfo.IsIPv6)
 	require.Equal("r1", nodeInfo.Rack)
 
 	t.Setenv("POD_IP", "172.27.0.1")
@@ -796,7 +800,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(configInput)
 
-	require.NoError(createJVMOptions(configInput, optionsDir, tempDir, &ConfigOverrides{}))
+	require.NoError(createJVMOptions(configInput, nil, optionsDir, tempDir, &ConfigOverrides{}))
 
 	inputFile := filepath.Join(tempDir, "jvm-server.options")
 	inputFile11 := filepath.Join(tempDir, "jvm11-server.options")
@@ -809,6 +813,8 @@ func TestServerOptionsOutput(t *testing.T) {
 
 	require.Contains(s, "-Xmx512m")
 	require.Contains(s, "-Xms512m")
+	require.Contains(s, "-Djava.net.preferIPv4Stack=false")
+	require.NotContains(s, "-Djava.net.preferIPv4Stack=true")
 	require.Contains(s, "-Dcassandra.system_distributed_replication=test-dc:1")
 	require.Contains(s, "-Dcom.sun.management.jmxremote.authenticate=true")
 
@@ -833,7 +839,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	// Test empty also and check we get the default G1 settings
 	ci := &ConfigInput{}
 	tempDir2 := t.TempDir()
-	require.NoError(createJVMOptions(ci, optionsDir, tempDir2, &ConfigOverrides{}))
+	require.NoError(createJVMOptions(ci, nil, optionsDir, tempDir2, &ConfigOverrides{}))
 
 	inputFile11 = filepath.Join(tempDir2, "jvm11-server.options")
 
@@ -854,7 +860,7 @@ func TestServerOptionsOutput(t *testing.T) {
 	}
 
 	tempDir3 := t.TempDir()
-	require.NoError(createJVMOptions(ci, optionsDir, tempDir3, &ConfigOverrides{}))
+	require.NoError(createJVMOptions(ci, nil, optionsDir, tempDir3, &ConfigOverrides{}))
 
 	inputFile11 = filepath.Join(tempDir3, "jvm11-server.options")
 
@@ -863,6 +869,62 @@ func TestServerOptionsOutput(t *testing.T) {
 
 	for _, v := range defaultCMSSettings {
 		require.Contains(s11, v)
+	}
+}
+
+func TestPreferIPv4Stack(t *testing.T) {
+	const podName = "test-datacenter1-r1-sts-0"
+	sourceDir := filepath.Join(envtest.RootDir(), "testfiles")
+	sourceOptions, err := readJvmServerOptions(filepath.Join(sourceDir, "jvm-server.options"))
+	require.NoError(t, err)
+	require.Contains(t, sourceOptions, "-Djava.net.preferIPv4Stack=true")
+
+	tests := []struct {
+		name     string
+		podIP    string
+		global   map[string]interface{}
+		perPod   map[string]interface{}
+		wantFlag string
+	}{
+		{"IPv6 pod", "fd00:10:244:4::7", nil, nil, "-Djava.net.preferIPv4Stack=false"},
+		{"IPv4 pod", "172.27.0.1", nil, nil, "-Djava.net.preferIPv4Stack=true"},
+		{"typed true on IPv6", "fd00:10:244:4::7", map[string]interface{}{"java_net_prefer_ipv4_stack": true}, nil, "-Djava.net.preferIPv4Stack=true"},
+		{"typed false on IPv4", "172.27.0.1", map[string]interface{}{"java_net_prefer_ipv4_stack": false}, nil, "-Djava.net.preferIPv4Stack=false"},
+		{"additional true on IPv6", "fd00:10:244:4::7", map[string]interface{}{"additional-jvm-opts": []interface{}{"-Djava.net.preferIPv4Stack=true"}}, nil, "-Djava.net.preferIPv4Stack=true"},
+		{"additional false on IPv4", "172.27.0.1", map[string]interface{}{"additional-jvm-opts": []interface{}{"-Djava.net.preferIPv4Stack=false"}}, nil, "-Djava.net.preferIPv4Stack=false"},
+		{"per-pod typed overrides global", "fd00:10:244:4::7", map[string]interface{}{"java_net_prefer_ipv4_stack": false}, map[string]interface{}{"java_net_prefer_ipv4_stack": true}, "-Djava.net.preferIPv4Stack=true"},
+		{"per-pod additional overrides global typed", "fd00:10:244:4::7", map[string]interface{}{"java_net_prefer_ipv4_stack": true}, map[string]interface{}{"additional-jvm-opts": []interface{}{"-Djava.net.preferIPv4Stack=false"}}, "-Djava.net.preferIPv4Stack=false"},
+		{"typed overrides additional at same level", "172.27.0.1", map[string]interface{}{"java_net_prefer_ipv4_stack": false, "additional-jvm-opts": []interface{}{"-Djava.net.preferIPv4Stack=true"}}, nil, "-Djava.net.preferIPv4Stack=false"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configInput, err := parseConfigInputFromData(cass50Config)
+			require.NoError(t, err)
+			configInput.ServerOptions = tt.global
+			if tt.perPod != nil {
+				configInput.PodOverrides = map[string]ConfigOverrides{
+					podName: {ServerOptions: tt.perPod},
+				}
+			}
+			data, err := json.Marshal(configInput)
+			require.NoError(t, err)
+			t.Setenv("CONFIG_FILE_DATA", string(data))
+			t.Setenv("POD_IP", tt.podIP)
+			t.Setenv("POD_NAME", podName)
+
+			builder := NewBuilder(sourceDir, t.TempDir())
+			require.NoError(t, builder.Build(t.Context()))
+			options, err := readJvmServerOptions(filepath.Join(builder.configOutputDir, "jvm-server.options"))
+			require.NoError(t, err)
+			var flags []string
+			for _, option := range options {
+				if strings.HasPrefix(option, "-Djava.net.preferIPv4Stack=") {
+					flags = append(flags, option)
+				}
+			}
+			require.Equal(t, []string{tt.wantFlag}, flags)
+		})
 	}
 }
 
@@ -896,7 +958,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 		},
 	}
 
-	require.NoError(createJVMOptions(ciG1, optionsDir, tempDirG1, &ConfigOverrides{}))
+	require.NoError(createJVMOptions(ciG1, nil, optionsDir, tempDirG1, &ConfigOverrides{}))
 
 	jvm17FileG1 := filepath.Join(tempDirG1, "jvm17-server.options")
 	optionsG1, err := readJvmServerOptions(jvm17FileG1)
@@ -923,7 +985,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 		},
 	}
 
-	require.NoError(createJVMOptions(ciZ, optionsDir, tempDirZ, &ConfigOverrides{}))
+	require.NoError(createJVMOptions(ciZ, nil, optionsDir, tempDirZ, &ConfigOverrides{}))
 
 	jvm17FileZ := filepath.Join(tempDirZ, "jvm17-server.options")
 	optionsZ, err := readJvmServerOptions(jvm17FileZ)
@@ -950,7 +1012,7 @@ func TestJVM17GarbageCollectorOptions(t *testing.T) {
 		},
 	}
 
-	require.NoError(createJVMOptions(ciS, optionsDir, tempDirS, &ConfigOverrides{}))
+	require.NoError(createJVMOptions(ciS, nil, optionsDir, tempDirS, &ConfigOverrides{}))
 
 	jvm17FileS := filepath.Join(tempDirS, "jvm17-server.options")
 	optionsS, err := readJvmServerOptions(jvm17FileS)
@@ -1001,7 +1063,7 @@ func TestReadOptionsWithNumeric(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(configInput)
 
-	require.NoError(createJVMOptions(configInput, optionsDir, tempDir, &ConfigOverrides{}))
+	require.NoError(createJVMOptions(configInput, nil, optionsDir, tempDir, &ConfigOverrides{}))
 
 	lines, err := readFileToLines(tempDir, "jvm-server.options")
 	require.NoError(err)
@@ -1025,7 +1087,7 @@ func TestCass50GCOverrides(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createJVMOptions(configInput, cassYamlDir, tempDir, &ConfigOverrides{}))
+	require.NoError(createJVMOptions(configInput, nil, cassYamlDir, tempDir, &ConfigOverrides{}))
 
 	jvm17OptionsFile := filepath.Join(tempDir, "jvm17-server.options")
 	options, err := readJvmServerOptions(jvm17OptionsFile)
@@ -1052,7 +1114,7 @@ func TestCass50GCOverridesAdditionalOpts(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(nodeInfo)
 
-	require.NoError(createJVMOptions(configInput, cassYamlDir, tempDir, &ConfigOverrides{}))
+	require.NoError(createJVMOptions(configInput, nil, cassYamlDir, tempDir, &ConfigOverrides{}))
 
 	jvm17OptionsFile := filepath.Join(tempDir, "jvm17-server.options")
 	options, err := readJvmServerOptions(jvm17OptionsFile)

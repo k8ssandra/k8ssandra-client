@@ -36,6 +36,7 @@ const (
 	sidecarConfigName         = "sidecar.yaml"
 	ipv4Local                 = "0.0.0.0"
 	ipv6Local                 = "::"
+	preferIPv4StackOption     = "-Djava.net.preferIPv4Stack="
 )
 
 type Builder struct {
@@ -110,7 +111,7 @@ func (b *Builder) Build(ctx context.Context) error {
 	}
 
 	// Create jvm*-server.options (merge per-pod overrides inside the helper)
-	if err := createJVMOptions(configInput, b.configInputDir, b.configOutputDir, podOverrides); err != nil {
+	if err := createJVMOptions(configInput, nodeInfo, b.configInputDir, b.configOutputDir, podOverrides); err != nil {
 		return err
 	}
 
@@ -210,12 +211,10 @@ func parseNodeInfo() (*NodeInfo, error) {
 
 	if ip := net.ParseIP(podIp); ip != nil {
 		n.ListenIP = ip
-	}
-
-	if ip := net.ParseIP(podIp); ip != nil {
 		if ip4 := ip.To4(); ip4 != nil {
 			n.RPCIP = net.ParseIP(ipv4Local)
 		} else if len(ip) == net.IPv6len {
+			n.IsIPv6 = true
 			n.RPCIP = net.ParseIP(ipv6Local)
 		}
 	}
@@ -304,20 +303,24 @@ func createCassandraEnv(configInput *ConfigInput, sourceDir, targetDir string) e
 }
 
 // createJVMOptions writes all the jvm*-server.options
-func createJVMOptions(configInput *ConfigInput, sourceDir, targetDir string, podOverrides *ConfigOverrides) error {
-	if err := createServerJVMOptions(configInput.ServerOptions, podOverrides.ServerOptions, "jvm-server.options", sourceDir, targetDir); err != nil {
+func createJVMOptions(configInput *ConfigInput, nodeInfo *NodeInfo, sourceDir, targetDir string, podOverrides *ConfigOverrides) error {
+	var defaults map[string]interface{}
+	if nodeInfo != nil && nodeInfo.IsIPv6 {
+		defaults = map[string]interface{}{"java_net_prefer_ipv4_stack": false}
+	}
+	if err := createServerJVMOptions(defaults, configInput.ServerOptions, podOverrides.ServerOptions, "jvm-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
 
-	if err := createServerJVMOptions(configInput.ServerOptions11, podOverrides.ServerOptions11, "jvm11-server.options", sourceDir, targetDir); err != nil {
+	if err := createServerJVMOptions(nil, configInput.ServerOptions11, podOverrides.ServerOptions11, "jvm11-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
 
-	if err := createServerJVMOptions(configInput.ServerOptions17, podOverrides.ServerOptions17, "jvm17-server.options", sourceDir, targetDir); err != nil {
+	if err := createServerJVMOptions(nil, configInput.ServerOptions17, podOverrides.ServerOptions17, "jvm17-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
 
-	if err := createServerJVMOptions(configInput.ServerOptions21, podOverrides.ServerOptions21, "jvm21-server.options", sourceDir, targetDir); err != nil {
+	if err := createServerJVMOptions(nil, configInput.ServerOptions21, podOverrides.ServerOptions21, "jvm21-server.options", sourceDir, targetDir); err != nil {
 		return err
 	}
 
@@ -336,7 +339,7 @@ func optionsFilenameToMap(filename string) map[string]metadata.Metadata {
 	}
 }
 
-func createServerJVMOptions(baseOptions, overrideOptions map[string]interface{}, filename, sourceDir, targetDir string) error {
+func createServerJVMOptions(defaults, baseOptions, overrideOptions map[string]interface{}, filename, sourceDir, targetDir string) error {
 	// Read the current jvm-server-options as []string, do linear search to replace the values with the inputs we get
 	optionsPath := filepath.Join(sourceDir, filename)
 	currentOptions, err := readJvmServerOptions(optionsPath)
@@ -345,32 +348,42 @@ func createServerJVMOptions(baseOptions, overrideOptions map[string]interface{},
 	}
 
 	options := make(map[string]interface{})
-	for k, v := range baseOptions {
+	for k, v := range defaults {
 		options[k] = v
 	}
 
-	// We could have this logic in the next section also, but I feel like it's easier to read if separated
-	if overrideAddOpts, found := overrideOptions["additional-jvm-opts"]; found {
-		if addOpts, found := options["additional-jvm-opts"]; found {
-			addOptsSlice, okA := addOpts.([]interface{})
-			overrideAddOptsSlice, okB := overrideAddOpts.([]interface{})
-
-			if !okA || !okB {
+	// Merge each scope in priority order. Normalize this Java property from
+	// additional-jvm-opts into the same key used by the typed setting.
+	aliases := optionsFilenameToMap(filename)
+	_, hasIPv4StackOption := aliases["java_net_prefer_ipv4_stack"]
+	var additional []interface{}
+	for i, layer := range []map[string]interface{}{baseOptions, overrideOptions} {
+		if raw, found := layer["additional-jvm-opts"]; found {
+			values, ok := raw.([]interface{})
+			if !ok {
 				return fmt.Errorf("additional-jvm-opts must be a list of strings")
 			}
-
-			options["additional-jvm-opts"] = append(addOptsSlice, overrideAddOptsSlice...)
-		} else {
-			// The original options had no additional-jvm-opts, we use our value as is
-			options["additional-jvm-opts"] = overrideAddOpts
+			for _, value := range values {
+				option, ok := value.(string)
+				if !ok {
+					return fmt.Errorf("additional-jvm-opts must be a list of strings")
+				}
+				if hasIPv4StackOption && strings.HasPrefix(option, preferIPv4StackOption) {
+					options["java_net_prefer_ipv4_stack"] = strings.TrimPrefix(option, preferIPv4StackOption)
+					continue
+				}
+				additional = append(additional, option)
+			}
+		}
+		for k, v := range layer {
+			if k == "additional-jvm-opts" || (i == 1 && k == "garbage_collector") {
+				continue
+			}
+			options[k] = v
 		}
 	}
-
-	for k, v := range overrideOptions {
-		if k == "additional-jvm-opts" || k == "garbage_collector" {
-			continue
-		}
-		options[k] = v
+	if len(additional) > 0 {
+		options["additional-jvm-opts"] = additional
 	}
 
 	targetOptions := make([]string, 0, len(currentOptions)+len(options))
@@ -400,15 +413,25 @@ func createServerJVMOptions(baseOptions, overrideOptions map[string]interface{},
 			}
 		}
 
-		s := optionsFilenameToMap(filename)
 		for k, v := range options {
 			if k == "additional-jvm-opts" || k == "garbage_collector" {
 				continue
 			}
 
-			if outputVal, found := s[k]; found {
+			if outputVal, found := aliases[k]; found {
 				if outputVal.ValueType == metadata.TemplateValue {
 					// We need another process here..
+					continue
+				}
+				if outputVal.ValueType == metadata.StaticConstant && strings.HasPrefix(outputVal.Key, "-D") && strings.Contains(outputVal.Key, "=") {
+					// Generated metadata stores boolean -D properties as a constant with the boolean value,
+					// but that's not good enough for us
+					enabled, err := strconv.ParseBool(fmt.Sprint(v))
+					if err != nil {
+						return fmt.Errorf("invalid %s: %w", k, err)
+					}
+					name, _, _ := strings.Cut(outputVal.Key, "=")
+					targetOptions = append(targetOptions, name+"="+strconv.FormatBool(enabled))
 					continue
 				}
 				targetOptions = append(targetOptions, outputVal.Output(fmt.Sprintf("%v", v)))
@@ -721,7 +744,7 @@ func k8ssandraOverrides(merged map[string]any, configInput *ConfigInput, nodeInf
 	}
 
 	merged["listen_address"] = nodeInfo.ListenIP.String()
-	if nodeInfo.ListenIP != nil && nodeInfo.ListenIP.To4() == nil {
+	if nodeInfo.IsIPv6 {
 		if _, explicitPreference := configInput.CassYaml["rpc_interface_prefer_ipv6"]; !explicitPreference {
 			merged["rpc_interface_prefer_ipv6"] = true
 		}
