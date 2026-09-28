@@ -1,4 +1,4 @@
-VERSION ?= 0.8.14
+VERSION ?= 0.10.0
 
 COMMIT := $(shell git rev-parse --short HEAD)
 DATE := $(shell date +%Y%m%d)
@@ -82,7 +82,7 @@ $(LOCALBIN):
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
-GOLANGCI_LINT_VERSION ?= v2.13.1
+GOLANGCI_LINT_VERSION ?= v2.14.0
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
 

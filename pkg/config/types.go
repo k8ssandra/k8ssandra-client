@@ -51,6 +51,7 @@ type NodeInfo struct {
 	ListenIP    net.IP
 	BroadcastIP net.IP
 	RPCIP       net.IP
+	IsIPv6      bool
 }
 
 var (
