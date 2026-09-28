@@ -386,57 +386,9 @@ func createServerJVMOptions(defaults, baseOptions, overrideOptions map[string]in
 		options["additional-jvm-opts"] = additional
 	}
 
-	targetOptions := make([]string, 0, len(currentOptions)+len(options))
-
-	if len(options) > 0 {
-		// Parse the jvm-server-options
-		if addOpts, found := options["additional-jvm-opts"]; found {
-			// Detect if any of these are garbage collector options and add them to options under garbage_collector instead
-			gcName := detectGarbageCollector(addOpts.([]any))
-
-			// If a GC was detected and garbage_collector isn't already set, set it
-			if gcName != "" && options["garbage_collector"] == nil {
-				options["garbage_collector"] = gcName
-
-				// Filter out the GC options from additional-jvm-opts
-				filteredOpts := filterGCOptions(addOpts.([]any))
-
-				// Add the filtered options to targetOptions
-				for _, v := range filteredOpts {
-					targetOptions = append(targetOptions, v.(string))
-				}
-			} else {
-				// No GC detected or garbage_collector already set, just add all options
-				for _, v := range addOpts.([]any) {
-					targetOptions = append(targetOptions, v.(string))
-				}
-			}
-		}
-
-		for k, v := range options {
-			if k == "additional-jvm-opts" || k == "garbage_collector" {
-				continue
-			}
-
-			if outputVal, found := aliases[k]; found {
-				if outputVal.ValueType == metadata.TemplateValue {
-					// We need another process here..
-					continue
-				}
-				if outputVal.ValueType == metadata.StaticConstant && strings.HasPrefix(outputVal.Key, "-D") && strings.Contains(outputVal.Key, "=") {
-					// Generated metadata stores boolean -D properties as a constant with the boolean value,
-					// but that's not good enough for us
-					enabled, err := strconv.ParseBool(fmt.Sprint(v))
-					if err != nil {
-						return fmt.Errorf("invalid %s: %w", k, err)
-					}
-					name, _, _ := strings.Cut(outputVal.Key, "=")
-					targetOptions = append(targetOptions, name+"="+strconv.FormatBool(enabled))
-					continue
-				}
-				targetOptions = append(targetOptions, outputVal.Output(fmt.Sprintf("%v", v)))
-			}
-		}
+	targetOptions, err := parseGcOptions(options, aliases)
+	if err != nil {
+		return err
 	}
 
 	// If filename matches jvm.*-server.options and has garbage_collector setting
@@ -517,6 +469,63 @@ curOptions:
 	}
 
 	return nil
+}
+
+func parseGcOptions(options map[string]interface{}, aliases map[string]metadata.Metadata) ([]string, error) {
+	targetOptions := make([]string, 0, len(options))
+
+	if len(options) > 0 {
+		// Parse the jvm-server-options
+		if addOpts, found := options["additional-jvm-opts"]; found {
+			// Detect if any of these are garbage collector options and add them to options under garbage_collector instead
+			gcName := detectGarbageCollector(addOpts.([]any))
+
+			// If a GC was detected and garbage_collector isn't already set, set it
+			if gcName != "" && options["garbage_collector"] == nil {
+				options["garbage_collector"] = gcName
+
+				// Filter out the GC options from additional-jvm-opts
+				filteredOpts := filterGCOptions(addOpts.([]any))
+
+				// Add the filtered options to targetOptions
+				for _, v := range filteredOpts {
+					targetOptions = append(targetOptions, v.(string))
+				}
+			} else {
+				// No GC detected or garbage_collector already set, just add all options
+				for _, v := range addOpts.([]any) {
+					targetOptions = append(targetOptions, v.(string))
+				}
+			}
+		}
+
+		for k, v := range options {
+			if k == "additional-jvm-opts" || k == "garbage_collector" {
+				continue
+			}
+
+			if outputVal, found := aliases[k]; found {
+				if outputVal.ValueType == metadata.TemplateValue {
+					// We need another process here..
+					continue
+				}
+				if outputVal.ValueType == metadata.StaticConstant && strings.HasPrefix(outputVal.Key, "-D") && strings.Contains(outputVal.Key, "=") {
+					// Generated metadata stores boolean -D properties as a constant with the boolean value,
+					// but that's not good enough for us
+					enabled, err := strconv.ParseBool(fmt.Sprint(v))
+					if err != nil {
+						return targetOptions, fmt.Errorf("invalid %s: %w", k, err)
+					}
+					name, _, _ := strings.Cut(outputVal.Key, "=")
+					targetOptions = append(targetOptions, name+"="+strconv.FormatBool(enabled))
+					continue
+				}
+				targetOptions = append(targetOptions, outputVal.Output(fmt.Sprintf("%v", v)))
+			}
+		}
+	}
+
+	return targetOptions, nil
 }
 
 const (
