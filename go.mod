@@ -1,6 +1,6 @@
 module github.com/k8ssandra/k8ssandra-client
 
-go 1.26.10
+go 1.27.2
 
 require (
 	github.com/Jeffail/gabs/v2 v2.7.0
